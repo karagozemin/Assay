@@ -10,6 +10,7 @@ import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { formatUnits } from "viem";
+import { randomUUID } from "node:crypto";
 import { ARC, verifyRegistrationTx } from "./arc.ts";
 
 import { embed } from "./embed.ts";
@@ -241,6 +242,30 @@ app.post("/pay/settle", async (req, res) => {
   const spend = authorizeSpend(String(authorizationId), source.price);
   if (!spend.ok) {
     return res.status(403).json({ error: spend.error, ...spend });
+  }
+
+  // TEST-ONLY settlement stub (ASSAY_TEST_SETTLE=1). This runs ONLY after the real
+  // authorizeSpend cap check above has passed, so it proves the route handler wires to
+  // the mandate ledger before paying — WITHOUT a funded wallet or real testnet USDC.
+  // It never touches the paymaster and is inert unless the env flag is explicitly set.
+  if (process.env.ASSAY_TEST_SETTLE === "1") {
+    const proof = `test-settle-${randomUUID()}`;
+    return res.json({
+      sourceId: source.id,
+      creatorId: source.creatorId,
+      title: source.title,
+      content: "[TEST SETTLE] cap check passed; paymaster bypassed",
+      price: source.price,
+      testSettle: true,
+      spend, // running mandate ledger: capUsdc / spentUsdc / remainingUsdc
+      payment: {
+        payer: null,
+        amountUsdc: source.price,
+        network: ARC.NETWORK,
+        settlementId: proof,
+        explorer: null,
+      },
+    });
   }
 
   if (!paymasterReady()) {
