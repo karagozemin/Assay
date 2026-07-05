@@ -1,8 +1,11 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
-import { Nav } from "@/components/Nav";
+import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 
+const sans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 const display = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-display",
@@ -26,10 +29,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${display.variable} ${mono.variable}`}>
-      <body className="min-h-screen font-mono antialiased">
-        <Nav />
-        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+    <html
+      lang="en"
+      className={`${sans.variable} ${display.variable} ${mono.variable}`}
+    >
+      <body className="min-h-screen font-sans antialiased">
+        <div className="bg-aurora" aria-hidden />
+        <div className="bg-grid" aria-hidden />
+        <div className="bg-noise" aria-hidden />
+        {children}
       </body>
     </html>
   );
