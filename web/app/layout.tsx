@@ -1,7 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
-import DarkVeil from "@/components/DarkVeil";
 
 const sans = Inter({
   subsets: ["latin"],
@@ -45,10 +44,6 @@ export default function RootLayout({
       className={`${sans.variable} ${display.variable} ${mono.variable}`}
     >
       <body className="min-h-screen font-sans antialiased">
-        <div className="bg-veil" aria-hidden>
-          <DarkVeil hueShift={0} />
-        </div>
-        <div className="bg-grid" aria-hidden />
         <div className="bg-noise" aria-hidden />
         {children}
       </body>

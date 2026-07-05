@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
+import DarkVeil from "@/components/DarkVeil";
 import {
   LogoMark,
   ArrowRightIcon,
@@ -204,6 +205,10 @@ function HeroDemo() {
 export default function LandingPage() {
   return (
     <div className="relative">
+      <div className="bg-veil" aria-hidden>
+        <DarkVeil hueShift={0} />
+      </div>
+      <div className="bg-grid" aria-hidden />
       {/* ── nav ─────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 border-b border-white/[0.05] bg-ink/60 backdrop-blur-2xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">

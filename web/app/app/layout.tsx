@@ -8,6 +8,7 @@ export default function AppLayout({
 }) {
   return (
     <>
+      <div className="bg-console" aria-hidden />
       <IntroOverlay />
       <Nav />
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>

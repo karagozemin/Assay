@@ -42,6 +42,29 @@ html {
   background: linear-gradient(to bottom, rgba(5, 5, 12, 0.15), rgba(5, 5, 12, 0.45));
 }
 
+/* console background — calm, static, workspace-feel (no shader) */
+.bg-console {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 45% at 15% -5%, rgba(139, 124, 248, 0.12), transparent 60%),
+    radial-gradient(ellipse 55% 40% at 90% 0%, rgba(94, 210, 190, 0.06), transparent 60%),
+    radial-gradient(ellipse 80% 55% at 50% 110%, rgba(76, 60, 160, 0.1), transparent 65%);
+}
+.bg-console::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 100% 80% at 50% 0%, black 10%, transparent 85%);
+  -webkit-mask-image: radial-gradient(ellipse 100% 80% at 50% 0%, black 10%, transparent 85%);
+}
+
 .bg-grid {
   position: fixed;
   inset: 0;
