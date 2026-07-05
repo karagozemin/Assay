@@ -12,6 +12,8 @@ import {
   type Payment,
   type Decision,
 } from "@/lib/api";
+import { Odometer } from "@/components/Odometer";
+
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -36,22 +38,47 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-white">Ledger &amp; Dashboard</h1>
-        <p className="text-sm text-gray-400">
-          Live traction. Every paid call is real testnet USDC settled on Arc; every
-          refusal is logged with a rationale below.
-        </p>
+      <header className="relative overflow-hidden rounded-3xl border border-edge/70 bg-panel/40 px-6 py-8 backdrop-blur-xl sm:px-10">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-buy/15 blur-3xl" />
+        <div className="relative">
+          <span className="pill mb-3 border border-edge bg-white/5 text-gray-300">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-buy" />
+            polling live · Arc testnet
+          </span>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-white">
+            The ledger doesn't lie.
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-gray-400">
+            Every paid call is real testnet USDC settled on Arc; every refusal is
+            logged with a rationale. This is the proof behind the demo.
+          </p>
+        </div>
       </header>
+
+      {/* live payment ticker */}
+      {payments.length > 0 && (
+        <div className="relative overflow-hidden rounded-xl border border-edge/70 bg-black/40 py-2">
+          <div className="flex w-max animate-marquee gap-8 whitespace-nowrap px-4 text-xs">
+            {[...payments, ...payments].map((p, i) => (
+              <span key={i} className="text-gray-400">
+                <span className="text-buy">●</span> {fmtUsd(p.amount)}{" "}
+                <span className="text-gray-600">→</span> creator{" "}
+                {p.creatorId.slice(0, 6)}{" "}
+                <span className="font-mono text-gray-600">{p.proof.slice(0, 10)}…</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Big traction numbers */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Big label="Total USDC settled" value={fmtUsd(metrics?.totalUsdc ?? 0)} />
-        <Big label="Paid calls" value={String(metrics?.paidCalls ?? 0)} />
+        <Big label="Paid calls" num={metrics?.paidCalls ?? 0} />
         <Big label="Avg payment" value={fmtUsd(metrics?.avgPayment ?? 0)} />
-        <Big label="Creators paid" value={String(metrics?.uniqueCreatorsPaid ?? 0)} />
-        <Big label="Unique tasks" value={String(metrics?.uniqueTasks ?? 0)} />
-        <Big label="Repeat tasks" value={String(metrics?.repeatTasks ?? 0)} />
+        <Big label="Creators paid" num={metrics?.uniqueCreatorsPaid ?? 0} />
+        <Big label="Unique tasks" num={metrics?.uniqueTasks ?? 0} />
+        <Big label="Repeat tasks" num={metrics?.repeatTasks ?? 0} />
         <Big
           label="Buy / Skip ratio"
           value={(metrics?.buySkipRatio ?? 0).toFixed(2)}
@@ -61,6 +88,7 @@ export default function DashboardPage() {
           value={`${metrics?.buyCount ?? 0}·${metrics?.skipCount ?? 0}·${metrics?.cacheCount ?? 0}`}
         />
       </div>
+
 
       {/* Payout ledger */}
       <section>
@@ -155,11 +183,22 @@ export default function DashboardPage() {
   );
 }
 
-function Big({ label, value }: { label: string; value: string }) {
+function Big({
+  label,
+  value,
+  num,
+}: {
+  label: string;
+  value?: string;
+  num?: number;
+}) {
   return (
     <div className="metric">
-      <span className="metric-value text-accent">{value}</span>
+      <span className="metric-value text-accent">
+        {num !== undefined ? <Odometer value={num} /> : value}
+      </span>
       <span className="metric-label">{label}</span>
     </div>
   );
 }
+

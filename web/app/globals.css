@@ -8,12 +8,28 @@
 
 html,
 body {
-  background: #0a0a0f;
+  background: #07070c;
   color: #e5e7eb;
 }
 
+/* Ambient background: subtle grid + radial glow so the app never feels flat */
+body {
+  background-image:
+    radial-gradient(60rem 40rem at 80% -10%, rgba(129, 140, 248, 0.12), transparent 60%),
+    radial-gradient(50rem 30rem at 0% 110%, rgba(167, 139, 250, 0.1), transparent 55%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px;
+  background-attachment: fixed;
+}
+
 .card {
-  @apply rounded-xl border border-edge bg-panel p-4;
+  @apply rounded-2xl border border-edge/80 bg-panel/70 p-4 backdrop-blur-xl;
+}
+
+.glass {
+  @apply rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
 .pill {
@@ -21,7 +37,7 @@ body {
 }
 
 .metric {
-  @apply rounded-xl border border-edge bg-panel p-4 flex flex-col gap-1;
+  @apply relative overflow-hidden rounded-2xl border border-edge/80 bg-panel/70 p-4 flex flex-col gap-1 backdrop-blur-xl;
 }
 
 .metric-value {
@@ -29,22 +45,48 @@ body {
 }
 
 .metric-label {
-  @apply text-xs uppercase tracking-wide text-gray-400;
+  @apply text-[11px] uppercase tracking-[0.15em] text-gray-500;
 }
 
 .btn {
-  @apply rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition hover:opacity-90 disabled:opacity-40;
+  @apply rounded-xl bg-gradient-to-b from-accent to-accent2 px-5 py-2.5 text-sm font-semibold text-ink transition hover:brightness-110 disabled:opacity-40 disabled:hover:brightness-100;
+  box-shadow: 0 8px 24px -8px rgba(167, 139, 250, 0.6);
+}
+
+.btn-ghost {
+  @apply rounded-xl border border-edge px-4 py-2 text-sm text-gray-300 transition hover:border-accent hover:text-white;
 }
 
 .input {
-  @apply w-full rounded-lg border border-edge bg-ink px-3 py-2 text-sm text-white outline-none focus:border-accent;
+  @apply w-full rounded-xl border border-edge bg-ink/60 px-3 py-2 text-sm text-white outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20;
 }
 
-/* subtle fade-in for streamed decision rows */
+.section-title {
+  @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500;
+}
+
+/* gradient text for hero */
+.text-gradient {
+  @apply bg-gradient-to-r from-white via-accent to-accent2 bg-clip-text text-transparent;
+}
+
+/* shimmer skeleton */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  @apply animate-shimmer;
+}
+
+/* subtle fade-in for streamed rows */
 @keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -52,5 +94,28 @@ body {
   }
 }
 .fade-up {
-  animation: fadeUp 0.25s ease-out;
+  animation: fadeUp 0.3s ease-out;
+}
+
+/* custom scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a3a transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #2a2a3a;
+  border-radius: 8px;
+}
+
+/* thermal receipt zig-zag bottom edge */
+.receipt-edge {
+  --s: 10px;
+  height: var(--s);
+  background:
+    linear-gradient(-45deg, transparent 50%, currentColor 51%) 0 0 / var(--s) var(--s),
+    linear-gradient(45deg, transparent 50%, currentColor 51%) 0 0 / var(--s) var(--s);
 }

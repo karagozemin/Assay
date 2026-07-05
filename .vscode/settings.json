@@ -1,0 +1,15 @@
+{
+  // Tailwind uses custom at-rules (@tailwind, @apply, @layer, @screen) that the
+  // built-in CSS/SCSS/LESS validators don't recognize. Silence those false positives.
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore",
+  // Treat these files as Tailwind CSS so the Tailwind IntelliSense extension
+  // (if installed) provides proper language support.
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "editor.quickSuggestions": {
+    "strings": "on"
+  }
+}

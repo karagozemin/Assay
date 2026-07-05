@@ -128,5 +128,7 @@ export const createSource = (input: {
     body: JSON.stringify(input),
   }).then(json<SourceCard>);
 
-export const fmtUsd = (n: number) =>
-  n >= 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(6)}`;
+export const fmtUsd = (n: number | null | undefined) => {
+  const v = typeof n === "number" && Number.isFinite(n) ? n : 0;
+  return v >= 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(6)}`;
+};
