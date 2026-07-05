@@ -10,6 +10,8 @@ import { PhaseRail, type Phase } from "@/components/PhaseRail";
 import { Receipt } from "@/components/Receipt";
 import { Odometer } from "@/components/Odometer";
 import { fmtUsd } from "@/lib/api";
+import { authorizeSpending, type SpendingAuthorization } from "@/lib/wallet";
+
 
 const EXAMPLES = [
   "How do Circle Gateway nanopayments settle on Arc testnet?",
@@ -24,6 +26,38 @@ export default function AgentRunPage() {
   const [prompt, setPrompt] = useState(EXAMPLES[0]);
   const [budget, setBudget] = useState(0.02);
   const [filter, setFilter] = useState<Filter>("ALL");
+
+  // Buyer-side spending authorization. The user connects their wallet and signs a
+  // spending cap once; the agent then spends autonomously within it — no per-purchase
+  // popups. A run may never spend more than the signed cap.
+  const [auth, setAuth] = useState<SpendingAuthorization | null>(null);
+  const [authorizing, setAuthorizing] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // The effective budget can never exceed what the wallet authorized this session.
+  const cap = auth?.capUsdc ?? 0;
+  const effectiveBudget = auth ? Math.min(budget, cap) : budget;
+  const capExpired = auth ? auth.expiry * 1000 < Date.now() : false;
+  const canRun = !!auth && !capExpired && !state.running && !!prompt.trim();
+
+  const authorize = async () => {
+    setAuthError(null);
+    setAuthorizing(true);
+    try {
+      // Sign for at least the current budget so the run isn't clamped below intent.
+      const grant = await authorizeSpending(Math.max(budget, 0.001));
+      setAuth(grant);
+    } catch (e: any) {
+      if (e?.code === 4001) {
+        setAuthError("Signature rejected — spending not authorized.");
+      } else {
+        setAuthError(e?.message ?? "Failed to authorize spending.");
+      }
+    } finally {
+      setAuthorizing(false);
+    }
+  };
+
 
   const bought = state.decisions.filter((d) => d.decision === "BUY");
   const skipped = state.decisions.filter((d) => d.decision === "SKIP");
@@ -106,6 +140,7 @@ export default function AgentRunPage() {
                 type="number"
                 step="0.001"
                 min="0.001"
+                max={auth ? cap : undefined}
                 className="w-24 bg-transparent px-1 py-2 text-sm text-white outline-none"
                 value={budget}
                 onChange={(e) => setBudget(parseFloat(e.target.value) || 0)}
@@ -113,10 +148,56 @@ export default function AgentRunPage() {
               <span className="pr-1 text-[10px] text-gray-600">USDC</span>
             </div>
           </div>
+
+          {/* Spending authorization: connect wallet + sign a cap once, then the
+              agent spends within it autonomously. */}
+          {!auth ? (
+            <button
+              className="btn"
+              disabled={authorizing || !prompt.trim()}
+              onClick={authorize}
+            >
+              {authorizing ? (
+                <>
+                  <span
+                    className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                    aria-hidden
+                  />
+                  Awaiting signature…
+                </>
+              ) : (
+                <>🔑 Connect wallet + approve cap</>
+              )}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 rounded-xl border border-buy/40 bg-buy/5 px-3 py-1.5 text-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-buy" />
+              <span className="text-gray-300">
+                {auth.address.slice(0, 6)}…{auth.address.slice(-4)} authorized
+              </span>
+              <span className="font-semibold text-buy">
+                cap {fmtUsd(cap)}
+              </span>
+              <button
+                className="text-gray-500 underline-offset-2 hover:text-white hover:underline"
+                onClick={() => setAuth(null)}
+              >
+                revoke
+              </button>
+            </div>
+          )}
+
           <button
             className="btn ml-auto"
-            disabled={state.running || !prompt.trim()}
-            onClick={() => run(prompt.trim(), budget)}
+            disabled={!canRun}
+            title={
+              !auth
+                ? "Approve a spending cap first"
+                : capExpired
+                  ? "Authorization expired — re-approve"
+                  : undefined
+            }
+            onClick={() => run(prompt.trim(), effectiveBudget)}
           >
             {state.running ? "Assaying…" : "▶ Run agent"}
           </button>
@@ -126,7 +207,23 @@ export default function AgentRunPage() {
             </button>
           )}
         </div>
+
+        {auth && budget > cap && (
+          <p className="text-xs text-amber-300/90">
+            Budget exceeds your signed cap — the agent is limited to{" "}
+            {fmtUsd(cap)} this run. Approve a higher cap to spend more.
+          </p>
+        )}
+        {capExpired && (
+          <p className="text-xs text-amber-300/90">
+            Your spending authorization expired. Approve a new cap to run again.
+          </p>
+        )}
+        {authError && (
+          <p className="text-xs text-skip">{authError}</p>
+        )}
       </div>
+
 
       {state.error && (
         <div className="rounded-2xl border border-skip/50 bg-skip/5 p-4 text-sm text-skip">

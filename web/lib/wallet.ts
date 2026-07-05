@@ -102,3 +102,88 @@ export async function proveWalletControl(): Promise<{
   const proofTx = await sendProofTx(address);
   return { address, proofTx };
 }
+
+/* ---------------------------------------------------------------------------
+ * Buyer-side spending authorization.
+ *
+ * A user (the one asking the research question) connects their wallet and signs
+ * an off-chain EIP-712 "SpendingAuthorization": they grant the agent's paymaster
+ * the right to spend up to `capUsdc` USDC on their behalf, until `expiry`. This is
+ * the same shape a production pull-payment / permit flow would settle on-chain —
+ * here it's a real client-side signature that gates how much the agent may spend
+ * autonomously in a single run. No per-purchase popups: sign the cap once, the
+ * agent deliberates and pays within it.
+ * ------------------------------------------------------------------------- */
+
+export type SpendingAuthorization = {
+  address: string; // the user's wallet (spender-of-record)
+  capUsdc: number; // max USDC the agent may spend this run
+  nonce: string; // unique per authorization
+  expiry: number; // unix seconds
+  signature: string; // EIP-712 signature over the above
+};
+
+/** USDC has 6 decimals on Arc; caps are expressed in base units in the signed payload. */
+const USDC_DECIMALS = 6n;
+const toUsdcUnits = (usdc: number): string =>
+  (BigInt(Math.round(usdc * 1e6)) * 10n ** (USDC_DECIMALS - 6n)).toString();
+
+/**
+ * Connect + ensure Arc + sign a spending cap. Returns a `SpendingAuthorization`.
+ * The signature is produced with `eth_signTypedData_v4` — no transaction, no gas,
+ * just a cryptographic grant the run then spends against.
+ */
+export async function authorizeSpending(capUsdc: number): Promise<SpendingAuthorization> {
+  const provider = getProvider();
+  const address = await connectWallet();
+  await ensureArcNetwork();
+
+  const nonce =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  const expiry = Math.floor(Date.now() / 1000) + 60 * 30; // 30-minute grant
+
+  const typedData = {
+    domain: {
+      name: "Assay Spending Authorization",
+      version: "1",
+      chainId: ARC.CHAIN_ID,
+      verifyingContract: ARC.USDC,
+    },
+    types: {
+      EIP712Domain: [
+        { name: "name", type: "string" },
+        { name: "version", type: "string" },
+        { name: "chainId", type: "uint256" },
+        { name: "verifyingContract", type: "address" },
+      ],
+      SpendingAuthorization: [
+        { name: "user", type: "address" },
+        { name: "token", type: "address" },
+        { name: "cap", type: "uint256" },
+        { name: "nonce", type: "string" },
+        { name: "expiry", type: "uint256" },
+      ],
+    },
+    primaryType: "SpendingAuthorization",
+    message: {
+      user: address,
+      token: ARC.USDC,
+      cap: toUsdcUnits(capUsdc),
+      nonce,
+      expiry,
+    },
+  };
+
+  const signature: string = await provider.request({
+    method: "eth_signTypedData_v4",
+    params: [address, JSON.stringify(typedData)],
+  });
+  if (!/^0x[a-fA-F0-9]{130}$/.test(signature)) {
+    throw new Error("Wallet did not return a valid signature.");
+  }
+
+  return { address, capUsdc, nonce, expiry, signature };
+}
+
