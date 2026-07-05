@@ -6,9 +6,13 @@
   color-scheme: dark;
 }
 
-html,
-body {
+html {
   background: #060609;
+}
+body {
+  /* NOTE: body must stay background-free — a body background paints OVER
+     the fixed z-index:-2 DarkVeil canvas and hides it. */
+  background: transparent;
   color: #e7e7ee;
 }
 
@@ -23,35 +27,19 @@ html {
 
 /* ---------------------------------------------------------------- ambient */
 
-.bg-aurora {
+.bg-veil {
   position: fixed;
   inset: 0;
   z-index: -2;
   overflow: hidden;
   pointer-events: none;
+  opacity: 0.85;
 }
-.bg-aurora::before,
-.bg-aurora::after {
+.bg-veil::after {
   content: "";
   position: absolute;
-  border-radius: 9999px;
-  filter: blur(90px);
-}
-.bg-aurora::before {
-  width: 55vw;
-  height: 55vw;
-  top: -22vw;
-  right: -12vw;
-  background: radial-gradient(circle at center, rgba(139, 124, 248, 0.16), transparent 65%);
-  animation: auroraA 16s ease-in-out infinite;
-}
-.bg-aurora::after {
-  width: 46vw;
-  height: 46vw;
-  bottom: -20vw;
-  left: -14vw;
-  background: radial-gradient(circle at center, rgba(56, 189, 248, 0.09), transparent 65%);
-  animation: auroraB 20s ease-in-out infinite;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(5, 5, 12, 0.15), rgba(5, 5, 12, 0.45));
 }
 
 .bg-grid {
