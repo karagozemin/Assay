@@ -220,10 +220,12 @@ html {
     rgba(139, 124, 248, 0.8) 12%,
     transparent 26%
   );
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
   mask-composite: exclude;
+  -webkit-mask-composite: xor;
   animation: beamSpin 5s linear infinite;
+
   pointer-events: none;
 }
 @property --beam {
@@ -296,3 +298,79 @@ html {
   opacity: 0;
   animation: introLine 0.3s ease-out forwards;
 }
+
+/* ---------------------------------------------------- publish success burst */
+
+/* expanding rings that radiate out from the success check */
+@keyframes ringOut {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+.publish-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(94, 210, 190, 0.7);
+  animation: ringOut 1.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+/* draw-on checkmark stroke */
+@keyframes checkDraw {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.check-path {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: checkDraw 0.5s 0.15s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+/* soft pop for the medallion */
+@keyframes medallionPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.medallion-pop {
+  animation: medallionPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* confetti shards that fall away after the check lands */
+@keyframes shardFly {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(0.4);
+  }
+}
+.confetti-shard {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  animation: shardFly 0.9s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+

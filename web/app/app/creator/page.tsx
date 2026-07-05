@@ -10,6 +10,8 @@ import {
   type Creator,
   type Payout,
 } from "@/lib/api";
+import PublishSuccess, { type PublishSuccessData } from "@/components/PublishSuccess";
+
 
 export default function CreatorPage() {
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -28,6 +30,11 @@ export default function CreatorPage() {
   const [content, setContent] = useState("");
   const [price, setPrice] = useState(0.002);
   const [tags, setTags] = useState("");
+
+  // publish flow
+  const [publishing, setPublishing] = useState(false);
+  const [success, setSuccess] = useState<PublishSuccessData | null>(null);
+
 
   const refresh = () => {
     getCreators().then(setCreators).catch(() => {});
@@ -53,6 +60,7 @@ export default function CreatorPage() {
   const onCreateSource = async () => {
     setErr(null);
     setMsg(null);
+    setPublishing(true);
     try {
       const s = await createSource({
         creatorId,
@@ -63,14 +71,22 @@ export default function CreatorPage() {
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
       });
       setMsg(`Source "${s.title}" published — x402-protected at ${s.contentUrl}.`);
+      setSuccess({
+        title: s.title,
+        price: fmtUsd(price),
+        contentUrl: s.contentUrl,
+      });
       setTitle("");
       setAbstract("");
       setContent("");
       setTags("");
     } catch (e: any) {
       setErr(e?.message ?? "Failed to publish source");
+    } finally {
+      setPublishing(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -174,13 +190,32 @@ export default function CreatorPage() {
           </div>
           <button
             className="btn"
-            disabled={!creatorId || !title.trim() || !abstract.trim() || !content.trim()}
+            disabled={
+              publishing ||
+              !creatorId ||
+              !title.trim() ||
+              !abstract.trim() ||
+              !content.trim()
+            }
             onClick={onCreateSource}
           >
-            Publish (price {fmtUsd(price)}/use)
+            {publishing ? (
+              <>
+                <span
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                  aria-hidden
+                />
+                Settling on-chain…
+              </>
+            ) : (
+              <>Publish (price {fmtUsd(price)}/use)</>
+            )}
           </button>
         </section>
       </div>
+
+      <PublishSuccess data={success} onClose={() => setSuccess(null)} />
+
 
       {/* Live earnings */}
       <section>
