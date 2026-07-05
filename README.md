@@ -13,36 +13,44 @@ justify why it did *not* buy a source. Refusals are the feature.
 
 ---
 
-## 📊 Live traction (last clean batch — 8 tasks, 11 sources, 5 creators)
+## 📊 Live traction (last clean batch — 14 tasks, 11 sources, 5 creators)
 
 | Metric | Value |
 | --- | ---: |
 | Creators onboarded | **5** |
 | Sources registered | **11** |
-| Unique tasks run | **8** |
-| Repeat tasks | **3** |
-| Paid x402 calls | **9** |
-| Total USDC settled (testnet) | **$0.0221** |
-| Avg payment size | **$0.00246** |
+| Unique tasks run | **14** |
+| Repeat tasks | **2** |
+| Paid x402 calls | **10** |
+| Total USDC settled (testnet) | **$0.0241** |
+| Avg payment size | **$0.00241** |
 | Unique creators paid | **5** |
-| **BUY** decisions | **9** |
-| **SKIP** decisions (refusals) | **25** |
-| **CACHE** hits (free reuse) | **54** |
-| Buy/Skip ratio | **0.36** |
+| **BUY** decisions | **10** |
+| **SKIP** decisions (refusals) | **114** |
+| **CACHE** hits (free reuse) | **30** |
+| Buy/Skip ratio | **0.088** |
+
+All payments settled on **Arc testnet** (`eip155:5042002`) from a single agent payer
+wallet (`0x1a05…5611`); each `BUY` row carries an x402 settlement `proof` in the ledger.
 
 **Per-creator payouts**
 
 | Creator | Earned | Paid calls |
 | --- | ---: | ---: |
+| Katherine Johnson | $0.0060 | 2 |
 | Ada Lovelace | $0.0050 | 2 |
 | Alan Turing | $0.0049 | 3 |
 | Grace Hopper | $0.0047 | 2 |
-| Katherine Johnson | $0.0040 | 1 |
 | Claude Shannon | $0.0035 | 1 |
 
-> The agency proof is in the ratios: **25 refusals and 54 cache-hits against just 9
-> buys.** Repeat tasks (identical prompts) spent **$0.00** — the agent recognized it had
-> already bought the relevant sources and reused them free instead of paying again.
+> The agency proof is in the ratios: **114 refusals and 30 cache-hits against just 10
+> buys** (buy/skip 0.088). Refusals break down into overlap, VoI-floor, budget, and
+> diminishing-returns *stopping-rule* rationales — every one logged. Repeat tasks
+> (identical prompts) spent **$0.00**: the agent recognized it already owned the relevant
+> sources and reused them free. Owned-but-off-topic sources are logged as honest **SKIP**s,
+> not false cache-hits — a source only counts as a `CACHE` reuse when it clears the same
+> relevance bar a fresh buy would.
+
 
 ---
 

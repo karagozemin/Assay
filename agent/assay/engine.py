@@ -55,6 +55,11 @@ class AssayConfig:
     min_voi: float = 8.0
     # Cache TTL in seconds for identical prior purchases (task-to-task reuse).
     cache_ttl_seconds: int = 24 * 3600
+    # A source we already own is only REUSED (CACHE) when it is genuinely on-topic for the
+    # current task — its relevance must clear this floor. Owned-but-off-topic sources SKIP
+    # instead of being falsely "reused", which keeps the ledger's CACHE rows honest.
+    cache_relevance_floor: float = 0.22
+
 
 
 DEFAULT_CONFIG = AssayConfig()
@@ -101,15 +106,27 @@ class Decision:
 
 
 # ---- Core scoring (pure, unit-testable) --------------------------------------------
-def _novelty(cand_emb: List[float], bought: List[Bought]) -> tuple[float, Optional[str]]:
-    """1 - max overlap with anything already bought. Returns (novelty, most_similar_id)."""
+def _novelty(
+    cand_emb: List[float],
+    bought: List[Bought],
+    exclude_id: Optional[str] = None,
+) -> tuple[float, Optional[str]]:
+    """1 - max overlap with anything already bought. Returns (novelty, most_similar_id).
+
+    `exclude_id` never lets a source be judged redundant with ITSELF (a source we already
+    own is compared only against OTHER sources, never against its own embedding).
+    """
     if not bought:
         return 1.0, None
     best_id, best_sim = None, -1.0
     for b in bought:
+        if exclude_id is not None and b.id == exclude_id:
+            continue
         sim = cosine(cand_emb, b.embedding)
         if sim > best_sim:
             best_sim, best_id = sim, b.id
+    if best_id is None:  # only self was present
+        return 1.0, None
     return max(0.0, 1.0 - best_sim), best_id
 
 
@@ -120,7 +137,8 @@ def score_candidate(
 ) -> Dict[str, float]:
     """Compute relevance, novelty, expected_gain, voi for a single candidate."""
     relevance = cosine(task_embedding, cand.embedding)
-    novelty, redundant_with = _novelty(cand.embedding, bought)
+    novelty, redundant_with = _novelty(cand.embedding, bought, exclude_id=cand.id)
+
     expected_gain = relevance * novelty * cand.quality_prior
     price = max(cand.price, 1e-9)  # guard divide-by-zero
     voi = expected_gain / price
@@ -173,21 +191,41 @@ def assay(
     stopped = False
 
     for cand, _ in scored:
-        # 2a) Cache hit short-circuit — free reuse, still informs novelty downstream.
+        # 2a) Cache hit — a source we already OWN from a prior task. Reusing it is free, but
+        # only counts as a CACHE HIT when the source would ACTUALLY be worth buying for THIS
+        # task. We judge it on the same relevance bar as a fresh buy (novelty is excluded here
+        # because owning the source is the whole point). An owned-but-off-topic source is a
+        # normal SKIP, not a cache hit — otherwise every task falsely "reuses" the whole
+        # registry once it has been bought at least once.
         if cand.id in cache_hits:
             hit = cache_hits[cand.id]
             s = score_candidate(cand, task_emb, bought_ctx)
-            decisions.append(Decision(
-                source_id=cand.id, creator_id=cand.creator_id, decision="CACHE",
-                rationale=(f"identical source purchased in task #{hit.task_id} within TTL "
-                           f"— reused free (saved ${cand.price:.4f})"),
-                relevance=s["relevance"], novelty=s["novelty"],
-                expected_gain=s["expected_gain"], voi=s["voi"], price=cand.price,
-                reason_code="cache",
-            ))
+            # relevance-only VoI: what this source would be worth to this task at its price.
+            rel_gain = s["relevance"] * cand.quality_prior
+            rel_voi = rel_gain / max(cand.price, 1e-9)
+            if s["relevance"] >= config.cache_relevance_floor and rel_voi >= config.min_voi:
+
+                decisions.append(Decision(
+                    source_id=cand.id, creator_id=cand.creator_id, decision="CACHE",
+                    rationale=(f"already own this from task #{hit.task_id} and it's relevant here "
+                               f"(relevance {s['relevance']:.2f}) — reused free, saved ${cand.price:.4f}"),
+                    relevance=s["relevance"], novelty=s["novelty"],
+                    expected_gain=s["expected_gain"], voi=s["voi"], price=cand.price,
+                    reason_code="cache",
+                ))
+            else:
+                decisions.append(Decision(
+                    source_id=cand.id, creator_id=cand.creator_id, decision="SKIP",
+                    rationale=(f"own this from task #{hit.task_id} but off-topic here "
+                               f"(relevance {s['relevance']:.2f}, VoI {rel_voi:.1f}/$) — not reused"),
+                    relevance=s["relevance"], novelty=s["novelty"],
+                    expected_gain=s["expected_gain"], voi=s["voi"], price=cand.price,
+                    reason_code="cache_irrelevant",
+                ))
             continue
 
         # 2b) Re-score against the LIVE context (includes sources bought earlier this pass).
+
         s = score_candidate(cand, task_emb, bought_ctx)
         relevance, novelty = s["relevance"], s["novelty"]
         expected_gain, voi = s["expected_gain"], s["voi"]

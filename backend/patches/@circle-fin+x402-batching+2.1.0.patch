@@ -1,0 +1,77 @@
+diff --git a/node_modules/@circle-fin/x402-batching/dist/client/index.mjs b/node_modules/@circle-fin/x402-batching/dist/client/index.mjs
+index 7089f3e..5aedc1d 100644
+--- a/node_modules/@circle-fin/x402-batching/dist/client/index.mjs
++++ b/node_modules/@circle-fin/x402-batching/dist/client/index.mjs
+@@ -904,8 +904,9 @@ var GatewayClient = class {
+     if (!paidResponse.ok) {
+       const error = await paidResponse.json().catch(() => ({}));
+       throw new Error(
+-        `Payment failed: ${error.error || paidResponse.statusText}`
++        `Payment failed: ${error.error || paidResponse.statusText}${error.reason ? ` | reason=${JSON.stringify(error.reason)}` : ""}`
+       );
++
+     }
+     const data = await paidResponse.json();
+     const amount = BigInt(batchingOption.amount);
+diff --git a/node_modules/@circle-fin/x402-batching/dist/server/index.js b/node_modules/@circle-fin/x402-batching/dist/server/index.js
+index c9f0032..b7e79e9 100644
+--- a/node_modules/@circle-fin/x402-batching/dist/server/index.js
++++ b/node_modules/@circle-fin/x402-batching/dist/server/index.js
+@@ -397,7 +397,7 @@ var GatewayEvmScheme = class extends import_server.ExactEvmScheme {
+     void extensionKeys;
+     return {
+       ...paymentRequirements,
+-      maxTimeoutSeconds: 345600,
++      maxTimeoutSeconds: 700000,
+       // 4 days — Gateway batches settlements asynchronously
+       extra: {
+         ...paymentRequirements.extra,
+@@ -498,7 +498,7 @@ function createGatewayMiddleware(config) {
+       // Use actual USDC address
+       amount,
+       payTo: config.sellerAddress,
+-      maxTimeoutSeconds: 345600,
++      maxTimeoutSeconds: 700000,
+       // 4 days (same as digital-dungeon)
+       extra: {
+         name: CIRCLE_BATCHING_NAME,
+@@ -525,7 +525,7 @@ function createGatewayMiddleware(config) {
+       // Use actual USDC address
+       amount: parsePrice(price),
+       payTo: config.sellerAddress,
+-      maxTimeoutSeconds: 345600,
++      maxTimeoutSeconds: 700000,
+       // 4 days
+       extra: {
+         name: CIRCLE_BATCHING_NAME,
+diff --git a/node_modules/@circle-fin/x402-batching/dist/server/index.mjs b/node_modules/@circle-fin/x402-batching/dist/server/index.mjs
+index 885c08a..52d5955 100644
+--- a/node_modules/@circle-fin/x402-batching/dist/server/index.mjs
++++ b/node_modules/@circle-fin/x402-batching/dist/server/index.mjs
+@@ -369,7 +369,7 @@ var GatewayEvmScheme = class extends ExactEvmScheme {
+     void extensionKeys;
+     return {
+       ...paymentRequirements,
+-      maxTimeoutSeconds: 345600,
++      maxTimeoutSeconds: 700000,
+       // 4 days — Gateway batches settlements asynchronously
+       extra: {
+         ...paymentRequirements.extra,
+@@ -470,7 +470,7 @@ function createGatewayMiddleware(config) {
+       // Use actual USDC address
+       amount,
+       payTo: config.sellerAddress,
+-      maxTimeoutSeconds: 345600,
++      maxTimeoutSeconds: 700000,
+       // 4 days (same as digital-dungeon)
+       extra: {
+         name: CIRCLE_BATCHING_NAME,
+@@ -497,7 +497,7 @@ function createGatewayMiddleware(config) {
+       // Use actual USDC address
+       amount: parsePrice(price),
+       payTo: config.sellerAddress,
+-      maxTimeoutSeconds: 345600,
++      maxTimeoutSeconds: 700000,
+       // 4 days
+       extra: {
+         name: CIRCLE_BATCHING_NAME,

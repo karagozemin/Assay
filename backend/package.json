@@ -7,7 +7,8 @@
     "dev": "node --experimental-transform-types --experimental-sqlite --no-warnings --env-file=.env.local --watch src/server.ts",
     "start": "node --experimental-transform-types --experimental-sqlite --no-warnings --env-file=.env.local src/server.ts",
     "seed": "node --experimental-transform-types --experimental-sqlite --no-warnings --env-file=.env.local src/seed.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@circle-fin/x402-batching": "^2.0.4",
@@ -21,6 +22,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^22.10.0",
+    "patch-package": "^8.0.1",
     "typescript": "^5.7.3"
   }
 }
