@@ -21,6 +21,16 @@ export const metadata: Metadata = {
   title: "Assay — the spending brain for research agents",
   description:
     "Watch an AI agent decide which creator sources are worth buying — and why it refuses the rest — paying per use over x402 on Arc.",
+  icons: {
+    icon: "/assay.png",
+    apple: "/assay.png",
+  },
+  openGraph: {
+    title: "Assay — the spending brain for research agents",
+    description:
+      "An AI agent that decides which creator sources are worth buying — and refuses the rest — paying per use over x402 on Arc.",
+    images: ["/assay.png"],
+  },
 };
 
 export default function RootLayout({

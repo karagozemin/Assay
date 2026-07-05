@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assay.png" alt="Assay logo" width="160" style="border-radius: 24px;" />
+</p>
+
 # Assay — the spending brain for research agents
 
 > **Assay decides which creator sources are worth buying, then pays them per use over x402 on Arc.**

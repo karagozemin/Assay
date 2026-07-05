@@ -214,22 +214,12 @@ export function BrainIcon({ className = base }: P) {
 /** Brand mark: flask inside a rounded square gradient. */
 export function LogoMark({ className = "h-8 w-8" }: P) {
   return (
-    <svg viewBox="0 0 32 32" fill="none" className={className} aria-hidden>
-      <rect width="32" height="32" rx="9" fill="url(#lg)" />
-      <path
-        d="M13.6 8h4.8M14 8v3.9c0 .4-.12.79-.34 1.13l-3.4 5.32c-.95 1.5.12 3.45 1.9 3.45h7.68c1.78 0 2.85-1.95 1.9-3.45l-3.4-5.32A2.1 2.1 0 0 1 18 11.9V8"
-        stroke="#fff"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M12.4 17h7.2" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" />
-      <defs>
-        <linearGradient id="lg" x1="0" y1="0" x2="32" y2="32">
-          <stop stopColor="#9d8ffa" />
-          <stop offset="1" stopColor="#6650e8" />
-        </linearGradient>
-      </defs>
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/assay.png"
+      alt="Assay logo"
+      className={`${className} rounded-[22%] object-cover`}
+      draggable={false}
+    />
   );
 }
