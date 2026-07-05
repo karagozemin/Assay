@@ -13,7 +13,9 @@ import { formatUnits } from "viem";
 import { ARC } from "./arc.ts";
 import { embed } from "./embed.ts";
 import { requirePayment, type PaymentInfo } from "./x402.ts";
+import { settle, paymasterReady } from "./paymaster.ts";
 import * as store from "./db.ts";
+
 
 const app = express();
 app.use(cors());
@@ -153,9 +155,59 @@ app.get("/content/:sourceId", (req: Request, res: Response, next: NextFunction) 
   });
 });
 
+/* ----------------------- buyer-side settlement --------------------------- */
+
+/**
+ * PAY — the agent's spending brain decided to BUY source :sourceId. It calls this and
+ * the backend's funded buyer wallet runs the REAL x402 flow against that source's
+ * protected /content endpoint (GET → 402 → Gateway nanopayment on Arc → retry),
+ * returning the paid content plus the on-chain settlement proof. The agent then
+ * records the payment via POST /ledger/payments using this proof.
+ *
+ * This is the single real-money chokepoint. If BUYER_PRIVATE_KEY is unset it 503s so
+ * the failure is loud rather than silently mocked.
+ */
+app.post("/pay/settle", async (req, res) => {
+  const { sourceId } = req.body ?? {};
+  if (!sourceId) return res.status(400).json({ error: "sourceId is required" });
+  if (!paymasterReady()) {
+    return res
+      .status(503)
+      .json({ error: "paymaster not configured — set BUYER_PRIVATE_KEY in backend/.env.local" });
+  }
+
+  const source = store.getSource(String(sourceId));
+  if (!source) return res.status(404).json({ error: "source not found" });
+
+  const port = Number(process.env.PORT ?? 4000);
+  const absoluteUrl = `http://127.0.0.1:${port}/content/${source.id}`;
+
+  try {
+    const result = await settle(source.id, absoluteUrl);
+    res.json({
+      sourceId: source.id,
+      creatorId: source.creatorId,
+      title: source.title,
+      content: result.content,
+      price: source.price,
+      payment: {
+        payer: result.payer,
+        amountUsdc: result.amountUsdc,
+        network: result.network,
+        settlementId: result.proof,
+        explorer: result.explorer,
+      },
+    });
+  } catch (err: any) {
+    console.error(`[pay/settle] source ${source.id} failed:`, err?.message ?? err);
+    res.status(502).json({ error: err?.message ?? "settlement failed" });
+  }
+});
+
 /* --------------------------------- tasks --------------------------------- */
 
 app.post("/tasks", (req, res) => {
+
   const { prompt, budget } = req.body ?? {};
   if (!prompt || budget == null) {
     return res.status(400).json({ error: "prompt and budget are required" });

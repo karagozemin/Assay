@@ -66,52 +66,43 @@ class AssayClient:
         """
         Execute the x402 flow for one source. Returns {content, proof, payer, network}.
         Raises on unrecoverable payment failure.
+
+        Real path: POST /pay/settle. The Circle Gateway batching SDK is Node-only, so the
+        backend owns the agent's paying wallet and runs the full flow server-side
+        (GET /content → 402 → Gateway nanopayment on Arc testnet → retry), returning the
+        paid content plus the on-chain settlement proof. We just consume the result.
         """
-        url = f"{self.base}/content/{source_id}"
-        first = self.http.get(url)
-        if first.status_code == 200:
-            # Some sellers may serve free (price 0) — treat as a zero-cost settlement.
-            return {"content": first.text, "proof": "free", "payer": AGENT_WALLET,
-                    "network": ARC_NETWORK}
-        if first.status_code != 402:
-            first.raise_for_status()
-
-        # We got a 402 — settle the nanopayment, then retry.
-        settlement = self._settle(source_id, price, pay_to, first)
-        paid = self.http.get(url, headers={"X-PAYMENT": settlement["header"]})
-        if paid.status_code != 200:
-            # Fall back to the settlement proof even if content fetch is flaky, so the
-            # ledger still records that money moved. Content will be empty.
-            paid_text = ""
-        else:
-            paid_text = paid.text
-        return {
-            "content": paid_text,
-            "proof": settlement["proof"],
-            "payer": settlement["payer"],
-            "network": ARC_NETWORK,
-        }
-
-    def _settle(self, source_id: str, price: float, pay_to: str,
-                challenge: httpx.Response) -> Dict[str, str]:
         if MOCK_PAY:
+            # DEV-ONLY: deterministic fake settlement so offline runs don't touch chain.
             proof = f"0xmock{uuid.uuid4().hex[:32]}"
-            return {"proof": proof, "payer": AGENT_WALLET,
-                    "header": f"mock:{proof}"}
-        # Real path: hand the 402 challenge to the Circle Gateway nanopayment settler.
-        # The batching SDK lives on the Node side; here we call the backend's settle
-        # helper which uses the agent's Circle wallet to authorize the transfer.
-        r = self.http.post(f"{self.base}/pay/settle", json={
-            "sourceId": source_id,
-            "price": price,
-            "payTo": pay_to,
-            "payer": AGENT_WALLET,
-            "challenge": dict(challenge.headers),
-        })
+            preview = self._peek_content(source_id)
+            return {"content": preview, "proof": proof, "payer": AGENT_WALLET,
+                    "network": ARC_NETWORK}
+
+        r = self.http.post(f"{self.base}/pay/settle", json={"sourceId": source_id})
         r.raise_for_status()
         data = r.json()
-        return {"proof": data["proof"], "payer": data.get("payer", AGENT_WALLET),
-                "header": data["header"]}
+        pay = data.get("payment", {})
+        proof = pay.get("settlementId")
+        if not proof:
+            raise RuntimeError(f"settle for source {source_id} returned no settlementId")
+        return {
+            "content": data.get("content", ""),
+            "proof": proof,
+            "payer": pay.get("payer", AGENT_WALLET),
+            "network": pay.get("network", ARC_NETWORK),
+        }
+
+    def _peek_content(self, source_id: str) -> str:
+        """MOCK-only: read the source card so mock runs still synthesize real text."""
+        try:
+            for c in self.discover():
+                if c.get("id") == source_id:
+                    return c.get("abstract", "")
+        except httpx.HTTPError:
+            pass
+        return ""
+
 
     def close(self) -> None:
         self.http.close()
