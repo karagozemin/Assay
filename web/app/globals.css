@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #0a0a0f;
+  color: #e5e7eb;
+}
+
+.card {
+  @apply rounded-xl border border-edge bg-panel p-4;
+}
+
+.pill {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold;
+}
+
+.metric {
+  @apply rounded-xl border border-edge bg-panel p-4 flex flex-col gap-1;
+}
+
+.metric-value {
+  @apply text-2xl font-bold text-white tabular-nums;
+}
+
+.metric-label {
+  @apply text-xs uppercase tracking-wide text-gray-400;
+}
+
+.btn {
+  @apply rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink transition hover:opacity-90 disabled:opacity-40;
+}
+
+.input {
+  @apply w-full rounded-lg border border-edge bg-ink px-3 py-2 text-sm text-white outline-none focus:border-accent;
+}
+
+/* subtle fade-in for streamed decision rows */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fadeUp 0.25s ease-out;
+}

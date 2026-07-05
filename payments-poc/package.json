@@ -1,0 +1,24 @@
+{
+  "name": "assay-payments-poc",
+  "private": true,
+  "type": "module",
+  "description": "Step 1 PoC: one real testnet USDC nanopayment through an x402-protected endpoint on Arc.",
+  "scripts": {
+    "generate-wallets": "node --experimental-transform-types --no-warnings generate-wallets.ts",
+    "seller": "node --experimental-transform-types --no-warnings --env-file=.env.local server.ts",
+    "buy": "node --experimental-transform-types --no-warnings --env-file=.env.local buyer.ts",
+    "fund": "node --experimental-transform-types --no-warnings --env-file=.env.local fund.ts"
+  },
+  "dependencies": {
+    "@circle-fin/x402-batching": "^2.0.4",
+    "@x402/core": "^2.17.0",
+    "@x402/evm": "^2.17.0",
+    "express": "^4.21.2",
+    "viem": "^2.47.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3"
+  }
+}
