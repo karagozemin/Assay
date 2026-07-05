@@ -10,7 +10,8 @@ import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { formatUnits } from "viem";
-import { ARC } from "./arc.ts";
+import { ARC, verifyRegistrationTx } from "./arc.ts";
+
 import { embed } from "./embed.ts";
 import { requirePayment, type PaymentInfo } from "./x402.ts";
 import { settle, paymasterReady } from "./paymaster.ts";
@@ -33,16 +34,42 @@ app.get("/health", (_req, res) => {
 
 /* -------------------------------- creators ------------------------------- */
 
-app.post("/creators", (req, res) => {
-  const { name, walletAddress } = req.body ?? {};
+app.post("/creators", async (req, res) => {
+  const { name, walletAddress, proofTx } = req.body ?? {};
   if (!name || !walletAddress) {
     return res.status(400).json({ error: "name and walletAddress are required" });
   }
   if (!/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
     return res.status(400).json({ error: "walletAddress must be a 0x EVM address" });
   }
-  res.status(201).json(store.createCreator(name, walletAddress));
+  if (!proofTx) {
+    return res
+      .status(400)
+      .json({ error: "proofTx is required — register from an Arc wallet transaction" });
+  }
+  // A wallet is a unique identity; a display name must also be unique. Reject dupes
+  // rather than silently creating a second creator that could impersonate the first.
+  if (store.getCreatorByWallet(walletAddress)) {
+    return res
+      .status(409)
+      .json({ error: "a creator with this wallet address is already registered" });
+  }
+  if (store.getCreatorByName(name)) {
+    return res
+      .status(409)
+      .json({ error: "a creator with this display name already exists" });
+  }
+  // Proof of wallet control: the proofTx must be an on-chain Arc transaction sent
+  // FROM this wallet. Without it, anyone could register someone else's address.
+  try {
+    await verifyRegistrationTx(String(proofTx), walletAddress);
+  } catch (err: any) {
+    return res.status(400).json({ error: err?.message ?? "proofTx verification failed" });
+  }
+  res.status(201).json(store.createCreator(name, walletAddress, String(proofTx)));
 });
+
+
 
 app.get("/creators", (_req, res) => res.json(store.listCreators()));
 

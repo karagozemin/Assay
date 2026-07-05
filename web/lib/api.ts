@@ -10,7 +10,13 @@ export const AGENT =
 
 /* ------------------------------- types ---------------------------------- */
 
-export type Creator = { id: string; name: string; walletAddress: string };
+export type Creator = {
+  id: string;
+  name: string;
+  walletAddress: string;
+  proofTx?: string;
+};
+
 
 export type SourceCard = {
   id: string;
@@ -159,12 +165,17 @@ export const getPayments = () =>
 
 /* -------------------------------- writes --------------------------------- */
 
-export const createCreator = (name: string, walletAddress: string) =>
+export const createCreator = (
+  name: string,
+  walletAddress: string,
+  proofTx: string,
+) =>
   fetch(`${BACKEND}/creators`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, walletAddress }),
+    body: JSON.stringify({ name, walletAddress, proofTx }),
   }).then(json<Creator>);
+
 
 export const createSource = (input: {
   creatorId: string;

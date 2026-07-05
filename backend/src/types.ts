@@ -4,8 +4,11 @@ export interface Creator {
   id: string;
   name: string;
   walletAddress: string;
+  /** Arc testnet tx hash proving control of walletAddress at registration time. */
+  proofTx: string;
   createdAt: string;
 }
+
 
 export interface Source {
   id: string;

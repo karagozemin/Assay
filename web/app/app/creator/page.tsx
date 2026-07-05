@@ -11,17 +11,43 @@ import {
   type Payout,
 } from "@/lib/api";
 import PublishSuccess, { type PublishSuccessData } from "@/components/PublishSuccess";
+import { proveWalletControl } from "@/lib/wallet";
 
+
+
+// Creators registered from *this* browser. Publishing is gated to these so you can
+// only ever publish under an identity you created — you can't impersonate someone else.
+const OWNED_KEY = "assay.ownedCreatorIds";
+const loadOwnedIds = (): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(OWNED_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+};
+const saveOwnedIds = (ids: string[]) => {
+  try {
+    window.localStorage.setItem(OWNED_KEY, JSON.stringify(ids));
+  } catch {
+    /* ignore quota / privacy-mode errors */
+  }
+};
 
 export default function CreatorPage() {
   const [creators, setCreators] = useState<Creator[]>([]);
+  const [ownedIds, setOwnedIds] = useState<string[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+
   // creator form
   const [name, setName] = useState("");
   const [wallet, setWallet] = useState("");
+  const [registering, setRegistering] = useState(false);
+
 
   // source form
   const [creatorId, setCreatorId] = useState("");
@@ -40,22 +66,48 @@ export default function CreatorPage() {
     getCreators().then(setCreators).catch(() => {});
     getPayouts().then(setPayouts).catch(() => {});
   };
-  useEffect(refresh, []);
+  useEffect(() => {
+    setOwnedIds(loadOwnedIds());
+    refresh();
+  }, []);
+
+  // Only identities registered from this browser may publish — prevents impersonation.
+  const ownedCreators = creators.filter((c) => ownedIds.includes(c.id));
+
 
   const onCreateCreator = async () => {
     setErr(null);
     setMsg(null);
+    setRegistering(true);
     try {
-      const c = await createCreator(name.trim(), wallet.trim());
-      setMsg(`Creator "${c.name}" registered with wallet ${c.walletAddress}.`);
+      // Proof-of-control: connect the wallet, switch to Arc, and broadcast a tiny
+      // self-transaction. The backend verifies this tx on-chain, so you can only
+      // register a wallet you actually control.
+      const { address, proofTx } = await proveWalletControl();
+      const c = await createCreator(name.trim(), address, proofTx);
+      // Remember this identity as owned by *this* browser so only it can publish under it.
+      const nextOwned = Array.from(new Set([...ownedIds, c.id]));
+      setOwnedIds(nextOwned);
+      saveOwnedIds(nextOwned);
+      setMsg(
+        `Creator "${c.name}" registered — wallet ${c.walletAddress} verified on Arc (proof ${proofTx.slice(0, 10)}…).`,
+      );
       setName("");
       setWallet("");
       setCreatorId(c.id);
       refresh();
     } catch (e: any) {
-      setErr(e?.message ?? "Failed to create creator");
+      // Wallet rejections come back with code 4001.
+      if (e?.code === 4001) {
+        setErr("Wallet request rejected — registration cancelled.");
+      } else {
+        setErr(e?.message ?? "Failed to create creator");
+      }
+    } finally {
+      setRegistering(false);
     }
   };
+
 
   const onCreateSource = async () => {
     setErr(null);
@@ -122,20 +174,29 @@ export default function CreatorPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-          <input
-            className="input font-mono"
-            placeholder="Wallet address (0x…)"
-            value={wallet}
-            onChange={(e) => setWallet(e.target.value)}
-          />
+          <p className="text-xs text-gray-500">
+            Your wallet address is read directly from your browser wallet — you'll
+            approve a tiny self-transaction on Arc to prove you control it.
+          </p>
           <button
             className="btn"
-            disabled={!name.trim() || !wallet.trim()}
+            disabled={!name.trim() || registering}
             onClick={onCreateCreator}
           >
-            Register + connect wallet
+            {registering ? (
+              <>
+                <span
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                  aria-hidden
+                />
+                Awaiting wallet…
+              </>
+            ) : (
+              <>Connect wallet + register</>
+            )}
           </button>
         </section>
+
 
         {/* Publish source */}
         <section className="card space-y-3">
@@ -148,12 +209,20 @@ export default function CreatorPage() {
             onChange={(e) => setCreatorId(e.target.value)}
           >
             <option value="">Select creator…</option>
-            {creators.map((c) => (
+            {/* Only identities you registered in this browser — you can't publish as someone else. */}
+            {ownedCreators.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
           </select>
+          {ownedCreators.length === 0 && (
+            <p className="text-xs text-gray-500">
+              Register a creator above first — you can only publish under an identity
+              you created in this browser.
+            </p>
+          )}
+
           <input
             className="input"
             placeholder="Title"

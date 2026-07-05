@@ -24,8 +24,10 @@ db.exec(`
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     walletAddress TEXT NOT NULL,
+    proofTx TEXT NOT NULL DEFAULT '',
     createdAt TEXT NOT NULL
   );
+
 
   CREATE TABLE IF NOT EXISTS sources (
     id TEXT PRIMARY KEY,
@@ -80,6 +82,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_payments_creator ON payments(creatorId);
 `);
 
+// Migrate older DBs that predate the on-chain proof column.
+const creatorCols = (
+  db.prepare("PRAGMA table_info(creators)").all() as unknown as { name: string }[]
+).map((c) => c.name);
+if (!creatorCols.includes("proofTx")) {
+  db.exec("ALTER TABLE creators ADD COLUMN proofTx TEXT NOT NULL DEFAULT '';");
+}
+
+
 const now = () => new Date().toISOString();
 
 // node:sqlite returns Record<string, SQLOutputValue>; cast through unknown to our row types.
@@ -94,16 +105,43 @@ function row<T>(stmt: any, ...args: unknown[]): T | undefined {
 
 /* ------------------------------- creators ------------------------------- */
 
-export function createCreator(name: string, walletAddress: string): Creator {
-  const c: Creator = { id: randomUUID(), name, walletAddress, createdAt: now() };
+export function createCreator(
+  name: string,
+  walletAddress: string,
+  proofTx: string,
+): Creator {
+  const c: Creator = {
+    id: randomUUID(),
+    name,
+    walletAddress,
+    proofTx,
+    createdAt: now(),
+  };
   db.prepare(
-    "INSERT INTO creators (id, name, walletAddress, createdAt) VALUES (?, ?, ?, ?)",
-  ).run(c.id, c.name, c.walletAddress, c.createdAt);
+    "INSERT INTO creators (id, name, walletAddress, proofTx, createdAt) VALUES (?, ?, ?, ?, ?)",
+  ).run(c.id, c.name, c.walletAddress, c.proofTx, c.createdAt);
   return c;
 }
 
+
 export function getCreator(id: string): Creator | undefined {
   return row<Creator>(db.prepare("SELECT * FROM creators WHERE id = ?"), id);
+}
+
+/** Case-insensitive lookup by wallet address (wallets are a unique identity). */
+export function getCreatorByWallet(walletAddress: string): Creator | undefined {
+  return row<Creator>(
+    db.prepare("SELECT * FROM creators WHERE lower(walletAddress) = lower(?)"),
+    walletAddress,
+  );
+}
+
+/** Case-insensitive lookup by display name. */
+export function getCreatorByName(name: string): Creator | undefined {
+  return row<Creator>(
+    db.prepare("SELECT * FROM creators WHERE lower(name) = lower(?)"),
+    name,
+  );
 }
 
 export function listCreators(): Creator[] {
