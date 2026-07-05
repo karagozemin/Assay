@@ -80,7 +80,12 @@ export function useAgentRun() {
   const abortRef = useRef<AbortController | null>(null);
   const drainRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const run = useCallback(async (prompt: string, budget: number) => {
+  const run = useCallback(async (
+    prompt: string,
+    budget: number,
+    authorizationId?: string,
+  ) => {
+
     abortRef.current?.abort();
     if (drainRef.current) clearInterval(drainRef.current);
     const ctrl = new AbortController();
@@ -121,7 +126,8 @@ export function useAgentRun() {
       const res = await fetch(`${AGENT}/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, budget }),
+        body: JSON.stringify({ prompt, budget, authorizationId }),
+
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {

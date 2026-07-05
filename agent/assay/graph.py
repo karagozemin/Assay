@@ -37,7 +37,9 @@ class RunState:
     payments: List[Dict[str, Any]] = field(default_factory=list)
     spent: float = 0.0
     answer: str = ""
+    authorization_id: Optional[str] = None
     config: AssayConfig = field(default_factory=AssayConfig)
+
 
 
 def _noop(_event: str, _data: Dict[str, Any]) -> None:
@@ -137,8 +139,10 @@ def node_pay(state: RunState, client: AssayClient, emit: EmitFn) -> RunState:
         emit("pay_start", {"sourceId": d.source_id, "price": d.price,
                            "payTo": pay_to, "title": card.get("title", d.source_id)})
         try:
-            result = client.buy_content(d.source_id, d.price, pay_to)
+            result = client.buy_content(d.source_id, d.price, pay_to,
+                                        authorization_id=state.authorization_id)
         except Exception as e:  # noqa: BLE001 — surface, don't crash the run
+
             emit("pay_error", {"sourceId": d.source_id, "error": str(e)})
             continue
         state.bought_content[d.source_id] = result.get("content", "")
@@ -244,10 +248,13 @@ def build_graph(client: AssayClient, emit: EmitFn, state: RunState):
 
 def run_task(prompt: str, budget: float, emit: EmitFn = _noop,
              config: Optional[AssayConfig] = None,
-             backend_url: Optional[str] = None) -> RunState:
+             backend_url: Optional[str] = None,
+             authorization_id: Optional[str] = None) -> RunState:
     """Top-level entry: run one research task end-to-end. Returns the final state."""
     client = AssayClient(base_url=backend_url) if backend_url else AssayClient()
-    state = RunState(prompt=prompt, budget=budget, config=config or AssayConfig())
+    state = RunState(prompt=prompt, budget=budget, config=config or AssayConfig(),
+                     authorization_id=authorization_id)
+
     try:
         graph = build_graph(client, emit, state)
         return graph.invoke()

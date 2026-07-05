@@ -9,8 +9,9 @@ import { BudgetGauge } from "@/components/BudgetGauge";
 import { PhaseRail, type Phase } from "@/components/PhaseRail";
 import { Receipt } from "@/components/Receipt";
 import { Odometer } from "@/components/Odometer";
-import { fmtUsd } from "@/lib/api";
+import { fmtUsd, registerAuthorization } from "@/lib/api";
 import { authorizeSpending, type SpendingAuthorization } from "@/lib/wallet";
+
 
 
 const EXAMPLES = [
@@ -31,8 +32,12 @@ export default function AgentRunPage() {
   // spending cap once; the agent then spends autonomously within it — no per-purchase
   // popups. A run may never spend more than the signed cap.
   const [auth, setAuth] = useState<SpendingAuthorization | null>(null);
+  // Backend-issued mandate id for this authorization. Every /pay/settle in the run
+  // must carry it, and the signed cap is enforced server-side against it.
+  const [authorizationId, setAuthorizationId] = useState<string | null>(null);
   const [authorizing, setAuthorizing] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+
 
   // The effective budget can never exceed what the wallet authorized this session.
   const cap = auth?.capUsdc ?? 0;
@@ -46,8 +51,20 @@ export default function AgentRunPage() {
     try {
       // Sign for at least the current budget so the run isn't clamped below intent.
       const grant = await authorizeSpending(Math.max(budget, 0.001));
+      // Register the signed mandate with the backend, which verifies the EIP-712
+      // signature and returns the mandate id the run must carry on every settlement.
+      const registered = await registerAuthorization({
+        user: grant.address,
+        token: grant.token,
+        cap: grant.capUnits,
+        nonce: grant.nonce,
+        expiry: grant.expiry,
+        signature: grant.signature,
+      });
       setAuth(grant);
+      setAuthorizationId(registered.id);
     } catch (e: any) {
+
       if (e?.code === 4001) {
         setAuthError("Signature rejected — spending not authorized.");
       } else {
@@ -180,9 +197,13 @@ export default function AgentRunPage() {
               </span>
               <button
                 className="text-gray-500 underline-offset-2 hover:text-white hover:underline"
-                onClick={() => setAuth(null)}
+                onClick={() => {
+                  setAuth(null);
+                  setAuthorizationId(null);
+                }}
               >
                 revoke
+
               </button>
             </div>
           )}
@@ -197,7 +218,10 @@ export default function AgentRunPage() {
                   ? "Authorization expired — re-approve"
                   : undefined
             }
-            onClick={() => run(prompt.trim(), effectiveBudget)}
+            onClick={() =>
+              run(prompt.trim(), effectiveBudget, authorizationId ?? undefined)
+            }
+
           >
             {state.running ? "Assaying…" : "▶ Run agent"}
           </button>

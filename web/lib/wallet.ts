@@ -118,10 +118,13 @@ export async function proveWalletControl(): Promise<{
 export type SpendingAuthorization = {
   address: string; // the user's wallet (spender-of-record)
   capUsdc: number; // max USDC the agent may spend this run
+  token: string; // USDC token the cap is denominated in (Arc USDC)
+  capUnits: string; // signed cap, in USDC base units (matches the signature exactly)
   nonce: string; // unique per authorization
   expiry: number; // unix seconds
   signature: string; // EIP-712 signature over the above
 };
+
 
 /** USDC has 6 decimals on Arc; caps are expressed in base units in the signed payload. */
 const USDC_DECIMALS = 6n;
@@ -143,6 +146,8 @@ export async function authorizeSpending(capUsdc: number): Promise<SpendingAuthor
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2);
   const expiry = Math.floor(Date.now() / 1000) + 60 * 30; // 30-minute grant
+  const capUnits = toUsdcUnits(capUsdc);
+
 
   const typedData = {
     domain: {
@@ -170,11 +175,12 @@ export async function authorizeSpending(capUsdc: number): Promise<SpendingAuthor
     message: {
       user: address,
       token: ARC.USDC,
-      cap: toUsdcUnits(capUsdc),
+      cap: capUnits,
       nonce,
       expiry,
     },
   };
+
 
   const signature: string = await provider.request({
     method: "eth_signTypedData_v4",
@@ -184,6 +190,15 @@ export async function authorizeSpending(capUsdc: number): Promise<SpendingAuthor
     throw new Error("Wallet did not return a valid signature.");
   }
 
-  return { address, capUsdc, nonce, expiry, signature };
+  return {
+    address,
+    capUsdc,
+    token: ARC.USDC,
+    capUnits,
+    nonce,
+    expiry,
+    signature,
+  };
 }
+
 

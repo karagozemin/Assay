@@ -62,7 +62,8 @@ class AssayClient:
         return r.json()
 
     # ---- x402 payment flow ----------------------------------------------------------
-    def buy_content(self, source_id: str, price: float, pay_to: str) -> Dict[str, Any]:
+    def buy_content(self, source_id: str, price: float, pay_to: str,
+                    authorization_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Execute the x402 flow for one source. Returns {content, proof, payer, network}.
         Raises on unrecoverable payment failure.
@@ -71,6 +72,10 @@ class AssayClient:
         backend owns the agent's paying wallet and runs the full flow server-side
         (GET /content → 402 → Gateway nanopayment on Arc testnet → retry), returning the
         paid content plus the on-chain settlement proof. We just consume the result.
+
+        `authorization_id` carries the buyer's signed spending mandate; the backend
+        enforces the signed cap against it before any money moves, and rejects the
+        settle with 401/403 if it's missing or exceeded.
         """
         if MOCK_PAY:
             # DEV-ONLY: deterministic fake settlement so offline runs don't touch chain.
@@ -79,8 +84,12 @@ class AssayClient:
             return {"content": preview, "proof": proof, "payer": AGENT_WALLET,
                     "network": ARC_NETWORK}
 
-        r = self.http.post(f"{self.base}/pay/settle", json={"sourceId": source_id})
+        payload: Dict[str, Any] = {"sourceId": source_id}
+        if authorization_id:
+            payload["authorizationId"] = authorization_id
+        r = self.http.post(f"{self.base}/pay/settle", json=payload)
         r.raise_for_status()
+
         data = r.json()
         pay = data.get("payment", {})
         proof = pay.get("settlementId")

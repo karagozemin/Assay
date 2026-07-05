@@ -192,7 +192,35 @@ export const createSource = (input: {
     body: JSON.stringify(input),
   }).then(json<SourceCard>);
 
+/**
+ * Register a browser-signed spending mandate with the backend. The backend verifies
+ * the EIP-712 signature server-side and returns a mandate id that every /pay/settle
+ * for this run must carry. The signed cap is enforced backend-side, so it can't be
+ * bypassed from the UI.
+ */
+export type RegisteredAuthorization = {
+  id: string;
+  user: string;
+  capUsdc: number;
+  expiry: number;
+};
+
+export const registerAuthorization = (auth: {
+  user: string;
+  token: string;
+  cap: string; // USDC base units, decimal string
+  nonce: string;
+  expiry: number;
+  signature: string;
+}) =>
+  fetch(`${BACKEND}/authorizations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(auth),
+  }).then(json<RegisteredAuthorization>);
+
 export const fmtUsd = (n: number | null | undefined) => {
+
   const v = typeof n === "number" && Number.isFinite(n) ? n : 0;
   return v >= 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(6)}`;
 };

@@ -38,6 +38,8 @@ class RunRequest(BaseModel):
     prompt: str
     budget: float = 0.02
     backend: Optional[str] = None
+    authorizationId: Optional[str] = None
+
 
 
 @app.get("/health")
@@ -54,7 +56,9 @@ def run(req: RunRequest) -> StreamingResponse:
 
     def worker() -> None:
         try:
-            run_task(req.prompt, req.budget, emit=emit, backend_url=req.backend)
+            run_task(req.prompt, req.budget, emit=emit, backend_url=req.backend,
+                     authorization_id=req.authorizationId)
+
         except Exception as e:  # noqa: BLE001 — report as a stream event, don't 500
             q.put({"event": "error", "data": {"message": str(e)}})
         finally:
