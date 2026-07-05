@@ -92,11 +92,64 @@ export const getDiscover = (q = "") =>
     json<SourceCard[]>,
   );
 
+// Backend uses different field names (totalUsdcSettled, totalPaidCalls, …);
+// normalize them to the shape the UI expects so nothing renders as 0/undefined.
+type RawMetrics = {
+  totalPaidCalls?: number;
+  paidCalls?: number;
+  totalUsdcSettled?: number;
+  totalUsdc?: number;
+  avgPaymentSize?: number;
+  avgPayment?: number;
+  uniqueCreatorsPaid?: number;
+  uniqueTasksRun?: number;
+  uniqueTasks?: number;
+  repeatTaskCount?: number;
+  repeatTasks?: number;
+  buyCount?: number;
+  skipCount?: number;
+  cacheCount?: number;
+  buySkipRatio?: number;
+};
+
 export const getMetrics = () =>
-  fetch(`${BACKEND}/metrics`, { cache: "no-store" }).then(json<Metrics>);
+  fetch(`${BACKEND}/metrics`, { cache: "no-store" })
+    .then(json<RawMetrics>)
+    .then(
+      (m): Metrics => ({
+        paidCalls: m.totalPaidCalls ?? m.paidCalls ?? 0,
+        totalUsdc: m.totalUsdcSettled ?? m.totalUsdc ?? 0,
+        avgPayment: m.avgPaymentSize ?? m.avgPayment ?? 0,
+        uniqueCreatorsPaid: m.uniqueCreatorsPaid ?? 0,
+        uniqueTasks: m.uniqueTasksRun ?? m.uniqueTasks ?? 0,
+        repeatTasks: m.repeatTaskCount ?? m.repeatTasks ?? 0,
+        buyCount: m.buyCount ?? 0,
+        skipCount: m.skipCount ?? 0,
+        cacheCount: m.cacheCount ?? 0,
+        buySkipRatio: m.buySkipRatio ?? 0,
+      }),
+    );
+
+type RawPayout = Omit<Payout, "totalUsdc"> & {
+  totalUsdc?: number;
+  totalEarned?: number;
+};
 
 export const getPayouts = () =>
-  fetch(`${BACKEND}/payouts`, { cache: "no-store" }).then(json<Payout[]>);
+  fetch(`${BACKEND}/payouts`, { cache: "no-store" })
+    .then(json<RawPayout[]>)
+    .then((list) =>
+      list.map(
+        (p): Payout => ({
+          creatorId: p.creatorId,
+          name: p.name,
+          walletAddress: p.walletAddress,
+          paidCalls: p.paidCalls,
+          totalUsdc: p.totalUsdc ?? p.totalEarned ?? 0,
+        }),
+      ),
+    );
+
 
 export const getDecisions = () =>
   fetch(`${BACKEND}/ledger/decisions`, { cache: "no-store" }).then(json<Decision[]>);
