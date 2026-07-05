@@ -29,11 +29,17 @@ type PaidRequest = express.Request & {
 const app = express();
 app.use(express.json());
 
+// We let `facilitatorUrl` default to the SDK's baked-in value (correct `/v1` path).
+// But we MUST pin `networks` to Arc Testnet: if omitted, the seller advertises ALL
+// Gateway-supported chains and the negotiation defaulted to Sepolia
+// (eip155:11155111), where the buyer has NO Gateway balance → "verification failed".
+// The buyer deposited its 0.5 USDC on Arc, so we force the challenge onto Arc.
 const gateway = createGatewayMiddleware({
   sellerAddress: CREATOR,
-  facilitatorUrl: ARC.FACILITATOR_URL,
-  networks: [ARC.NETWORK],
+  networks: [ARC.NETWORK], // eip155:5042002
 });
+
+
 
 const PRICE = process.env.PRICE ?? "$0.001";
 

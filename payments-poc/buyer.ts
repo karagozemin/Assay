@@ -52,5 +52,23 @@ async function main() {
 
 main().catch((err) => {
   console.error("Payment failed:", err?.message ?? err);
+  // Dump EVERY own property on the error chain so the facilitator's real
+  // `invalidReason` (buried by the SDK) becomes visible.
+  const dump = (e: any, depth = 0): void => {
+    if (!e || depth > 4) return;
+    for (const k of Object.getOwnPropertyNames(e)) {
+      if (k === "stack") continue;
+      let v = (e as any)[k];
+      if (typeof v === "object" && v !== null) {
+        try { v = JSON.stringify(v); } catch { v = "[obj]"; }
+      }
+      if (typeof v === "function") continue;
+      console.error(`  ${"  ".repeat(depth)}${k}: ${v}`);
+    }
+    if (e.cause) { console.error(`  ${"  ".repeat(depth)}cause ->`); dump(e.cause, depth + 1); }
+  };
+  dump(err);
   process.exit(1);
 });
+
+

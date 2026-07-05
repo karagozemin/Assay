@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Step 1 PoC: one real testnet USDC nanopayment through an x402-protected endpoint on Arc.",
   "scripts": {
+    "postinstall": "patch-package",
     "generate-wallets": "node --experimental-transform-types --no-warnings generate-wallets.ts",
     "seller": "node --experimental-transform-types --no-warnings --env-file=.env.local server.ts",
     "buy": "node --experimental-transform-types --no-warnings --env-file=.env.local buyer.ts",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^22.10.0",
+    "patch-package": "^8.0.1",
     "typescript": "^5.9.3"
   }
 }
