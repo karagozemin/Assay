@@ -100,10 +100,20 @@ export default function CreatorPage() {
       // Wallet rejections come back with code 4001.
       if (e?.code === 4001) {
         setErr("Wallet request rejected — registration cancelled.");
+      } else if (
+        e?.code === -32000 ||
+        /insufficient funds|gas required|exceeds balance/i.test(
+          e?.message ?? "",
+        )
+      ) {
+        setErr(
+          "Not enough gas on Arc testnet. Arc pays gas in USDC — grab some from the Circle faucet (faucet.circle.com → USDC → Arc Testnet → your wallet address), then try again.",
+        );
       } else {
         setErr(e?.message ?? "Failed to create creator");
       }
     } finally {
+
       setRegistering(false);
     }
   };
@@ -178,7 +188,21 @@ export default function CreatorPage() {
             Your wallet address is read directly from your browser wallet — you'll
             approve a tiny self-transaction on Arc to prove you control it.
           </p>
+          <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-300/90">
+            First time on Arc? Gas is paid in USDC. Grab a little from the{" "}
+            <a
+              href="https://faucet.circle.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-amber-200"
+            >
+              Circle faucet
+            </a>{" "}
+            (select <strong>USDC</strong> → <strong>Arc Testnet</strong> → paste
+            your wallet address) so the proof transaction can go through.
+          </p>
           <button
+
             className="btn"
             disabled={!name.trim() || registering}
             onClick={onCreateCreator}
