@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAgentRun } from "@/lib/useAgentRun";
 import { AssayCard } from "@/components/AssayCard";
@@ -185,11 +185,7 @@ export default function AgentRunPage() {
           )}
 
           {state.running && state.decisions.length === 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="h-40 rounded-2xl border border-edge/60 shimmer" />
-              ))}
-            </div>
+            <WorkingPanel discovered={state.discovered} />
           )}
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -240,6 +236,97 @@ export default function AgentRunPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+const WORK_STEPS = [
+  "fetching candidate manifests from registry",
+  "embedding task prompt · 384-dim vector",
+  "scoring relevance × novelty per source",
+  "checking overlap against owned sources",
+  "pricing value-of-information vs. budget",
+];
+
+/** Compact "the agent is actually doing work" indicator shown before the
+ *  first decision streams in. Steps tick off sequentially; a scanline sweeps
+ *  the panel to sell the feeling of live computation. */
+function WorkingPanel({ discovered }: { discovered: number }) {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const t = setInterval(
+      () => setStep((s) => Math.min(s + 1, WORK_STEPS.length - 1)),
+      1100,
+    );
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass relative overflow-hidden p-5"
+    >
+      {/* sweeping scanline */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 h-20 bg-gradient-to-b from-transparent via-accent/[0.07] to-transparent"
+        initial={{ top: "-25%" }}
+        animate={{ top: "115%" }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: "linear" }}
+      />
+
+      <div className="relative flex items-center gap-3">
+        <span className="relative grid h-8 w-8 place-items-center">
+          <span className="absolute inset-0 animate-ping rounded-full bg-accent/20" />
+          <span className="h-8 w-8 animate-spin rounded-full border-2 border-edge border-t-accent" />
+        </span>
+        <div>
+          <div className="text-sm font-semibold text-white">
+            Assaying candidates…
+          </div>
+          <div className="text-[11px] text-gray-500">
+            {discovered > 0
+              ? `${discovered} source(s) under evaluation`
+              : "discovering paid sources"}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative mt-4 space-y-1.5 font-mono text-[11px]">
+        {WORK_STEPS.map((s, i) => (
+          <div
+            key={s}
+            className={`flex items-center gap-2 transition-colors duration-300 ${
+              i < step
+                ? "text-gray-500"
+                : i === step
+                  ? "text-gray-200"
+                  : "text-gray-700"
+            }`}
+          >
+            {i < step ? (
+              <span className="text-buy">✓</span>
+            ) : i === step ? (
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+            ) : (
+              <span className="h-1.5 w-1.5 rounded-full bg-edge" />
+            )}
+            {s}
+            {i === step && <span className="animate-pulse text-accent">▍</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* indeterminate progress */}
+      <div className="relative mt-4 h-0.5 overflow-hidden rounded-full bg-white/5">
+        <motion.div
+          className="absolute h-full w-1/3 rounded-full bg-gradient-to-r from-transparent via-accent to-transparent"
+          initial={{ left: "-35%" }}
+          animate={{ left: "105%" }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
+    </motion.div>
   );
 }
 

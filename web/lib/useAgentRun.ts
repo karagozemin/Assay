@@ -71,15 +71,45 @@ const INITIAL: RunState = {
   error: null,
 };
 
+/** Minimum gap between decision cards appearing, in ms. The backend streams
+ *  decisions near-instantly; pacing them out makes the assay legible. */
+const DECISION_PACE_MS = 900;
+
 export function useAgentRun() {
   const [state, setState] = useState<RunState>(INITIAL);
   const abortRef = useRef<AbortController | null>(null);
+  const drainRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const run = useCallback(async (prompt: string, budget: number) => {
     abortRef.current?.abort();
+    if (drainRef.current) clearInterval(drainRef.current);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setState({ ...INITIAL, running: true });
+
+    // Paced delivery: decisions queue up here and are released one at a time
+    // so the UI reads like the agent is genuinely deliberating.
+    const queue: DecisionEvent[] = [];
+    const deferred: Array<() => void> = []; // synth/done applied after queue drains
+    let streamEnded = false;
+
+    const drain = setInterval(() => {
+      if (ctrl.signal.aborted) {
+        clearInterval(drain);
+        return;
+      }
+      const next = queue.shift();
+      if (next) {
+        setState((s) => ({ ...s, decisions: [...s.decisions, next] }));
+        return;
+      }
+      if (streamEnded) {
+        clearInterval(drain);
+        deferred.forEach((fn) => fn());
+        setState((s) => ({ ...s, running: false }));
+      }
+    }, DECISION_PACE_MS);
+    drainRef.current = drain;
 
     const push = (event: string, text: string) =>
       setState((s) => ({
@@ -120,7 +150,7 @@ export function useAgentRun() {
             );
             break;
           case "decision":
-            setState((s) => ({ ...s, decisions: [...s.decisions, data] }));
+            queue.push(data);
             break;
           case "pay_start":
             push("pay", `Paying ${data.title} → ${data.payTo?.slice(0, 10)}… ($${data.price})`);
@@ -133,14 +163,16 @@ export function useAgentRun() {
             push("error", `Payment failed for ${data.sourceId}: ${data.error}`);
             break;
           case "synthesize":
-            setState((s) => ({ ...s, synth: data }));
+            deferred.push(() => setState((s) => ({ ...s, synth: data })));
             break;
           case "error":
             setState((s) => ({ ...s, error: data.message }));
             push("error", data.message);
             break;
           case "done":
-            push("done", `Run complete — spent $${data.spent}`);
+            deferred.push(() =>
+              push("done", `Run complete — spent $${data.spent}`),
+            );
             break;
           default:
             break;
@@ -175,11 +207,17 @@ export function useAgentRun() {
         setState((s) => ({ ...s, error: e?.message ?? "Run failed" }));
       }
     } finally {
-      setState((s) => ({ ...s, running: false }));
+      // Don't flip `running` off yet — let the drain loop finish revealing
+      // queued decisions first, then it applies synth/done and ends the run.
+      streamEnded = true;
     }
   }, []);
 
-  const reset = useCallback(() => setState(INITIAL), []);
+  const reset = useCallback(() => {
+    abortRef.current?.abort();
+    if (drainRef.current) clearInterval(drainRef.current);
+    setState(INITIAL);
+  }, []);
 
   return { state, run, reset };
 }
