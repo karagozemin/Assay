@@ -47,17 +47,23 @@ if ! id "$APP_USER" >/dev/null 2>&1; then
   say "Creating service user '$APP_USER'…"
   useradd --system --create-home --shell /usr/sbin/nologin "$APP_USER"
 fi
-mkdir -p "$APP_DIR" "$DATA_DIR"
-
 # ── 4. Clone or update the repo ─────────────────────────────────────────────
+# NOTE: do NOT pre-create $APP_DIR here — `git clone` requires the target to be
+# empty/absent. The data dir (which lives outside the repo) is created AFTER.
 if [[ -d "${APP_DIR}/.git" ]]; then
   say "Updating existing checkout…"
   git -C "$APP_DIR" fetch --depth 1 origin "$BRANCH"
   git -C "$APP_DIR" reset --hard "origin/${BRANCH}"
 else
   say "Cloning ${REPO_URL} (${BRANCH})…"
+  rm -rf "$APP_DIR"
   git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
 fi
+
+# Persistent data dir (SQLite ledger) — created after checkout so it never
+# blocks the clone above.
+mkdir -p "$DATA_DIR"
+
 
 # ── 5. Backend deps (npm ci runs patch-package via postinstall) ─────────────
 say "Installing backend dependencies…"
