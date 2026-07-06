@@ -1,0 +1,21 @@
+# systemd unit for the Assay web app (Next.js, port 3000).
+# Built once by setup.sh (`next build`) with NEXT_PUBLIC_* baked in, then served
+# with `next start`. nginx proxies "/" here so the whole app is one origin.
+#
+# Install: copy to /etc/systemd/system/assay-web.service
+[Unit]
+Description=Assay web (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+User=assay
+WorkingDirectory=/opt/assay/web
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

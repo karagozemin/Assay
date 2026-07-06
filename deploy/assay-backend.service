@@ -1,0 +1,22 @@
+# systemd unit for the Assay backend (Express + node:sqlite).
+# Runs the TypeScript sources directly with Node 22's experimental flags —
+# no build step. Secrets come from backend/.env.local (via the npm start script).
+#
+# Install: copy to /etc/systemd/system/assay-backend.service
+[Unit]
+Description=Assay backend (registry + ledger + x402)
+After=network.target
+
+[Service]
+Type=simple
+User=assay
+WorkingDirectory=/opt/assay/backend
+# Persist the SQLite ledger outside the repo so `git pull` / redeploys never wipe it.
+Environment=ASSAY_DB=/opt/assay/data/assay.sqlite
+Environment=PORT=4000
+ExecStart=/usr/bin/node --experimental-transform-types --experimental-sqlite --no-warnings --env-file=.env.local src/server.ts
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

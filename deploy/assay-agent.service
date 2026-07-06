@@ -1,0 +1,21 @@
+# systemd unit for the Assay agent (FastAPI SSE decision stream).
+# Talks to the backend on localhost:4000 via ASSAY_BACKEND_URL.
+#
+# Install: copy to /etc/systemd/system/assay-agent.service
+[Unit]
+Description=Assay agent (FastAPI /run SSE)
+After=network.target assay-backend.service
+Wants=assay-backend.service
+
+[Service]
+Type=simple
+User=assay
+WorkingDirectory=/opt/assay/agent
+Environment=ASSAY_BACKEND_URL=http://127.0.0.1:4000
+# Uvicorn from the project virtualenv created by setup.sh.
+ExecStart=/opt/assay/agent/.venv/bin/uvicorn api:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
