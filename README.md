@@ -93,7 +93,12 @@ bottom.
 
 ## Architecture
 
-Monorepo, three parts:
+**📐 Full architecture — with diagrams — lives in [`ARCHITECTURE.md`](ARCHITECTURE.md).**
+It maps the whole system: the big picture, the VoI decision ladder, the run state machine,
+the x402 money path, and the trust model — each as a short paragraph + a diagram.
+
+At a glance, a monorepo with three parts around one SQLite ledger:
+
 
 ```
 agent/          Python + LangGraph spending brain
