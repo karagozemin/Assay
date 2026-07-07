@@ -144,7 +144,14 @@ scripts/        seed.py (creators + sources + demo task batch), smoke_run.py
 Payment plumbing was adapted from `circlefin/arc-nanopayments` (LangChain paying agent +
 x402 seller endpoints + Gateway batching) rather than reinvented.
 
+> **🐞 Circle SDK bug we found & fixed:** `@circle-fin/x402-batching@2.1.0` hardcodes the
+> payment-authorization window to 4 days, but the Gateway facilitator requires ≥ 7 days —
+> so *every* batched x402 nanopayment on Arc testnet fails with
+> `authorization_validity_too_short`. Full root-cause write-up, repro, and the patch we
+> shipped are in **[`BUG_REPORT_CIRCLE.md`](BUG_REPORT_CIRCLE.md)**.
+
 ---
+
 
 ## Run it locally
 
