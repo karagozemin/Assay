@@ -57,11 +57,14 @@ export async function ensureArcNetwork(): Promise<void> {
         params: [
           {
             chainId: ARC_CHAIN_ID_HEX,
-            chainName: "Arc Testnet",
-            nativeCurrency: { name: "Arc", symbol: "ARC", decimals: 18 },
+            // Match the wallet's chain registry so no "name/symbol mismatch"
+            // warnings are shown when the network is added.
+            chainName: "Arc Network Testnet",
+            nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
             rpcUrls: [ARC.RPC_URL],
             blockExplorerUrls: [ARC.EXPLORER],
           },
+
         ],
       });
     } else {
