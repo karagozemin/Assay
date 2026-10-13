@@ -92,6 +92,8 @@ export type RunReceiptProof = {
   receiptHash: string;
   canonicalReceipt: Record<string, unknown>;
   canonicalJson: string;
+  anchorTarget: string;
+  innerTarget: string;
   expectedCalldata: string;
   signer: string;
   chainId: 5042;
@@ -106,6 +108,7 @@ export type RunReceiptProof = {
   verifiedAt: string | null;
   artifactUrl: string | null;
   proofScope: string;
+  anchorMethod: "arc_memo_contract";
 };
 
 /* ------------------------------ helpers ---------------------------------- */

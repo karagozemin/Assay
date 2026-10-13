@@ -28,7 +28,11 @@ export function MainnetReceiptProof({
       const prepared = receipt ?? (await createRunReceipt(taskId, authorizationId));
       setReceipt(prepared);
       if (prepared.anchorStatus === "verified") return;
-      const hash = txHash ?? (await sendMainnetReceiptAnchor(prepared.signer, prepared.expectedCalldata));
+      const hash = txHash ?? (await sendMainnetReceiptAnchor(
+        prepared.signer,
+        prepared.anchorTarget,
+        prepared.expectedCalldata,
+      ));
       setTxHash(hash);
       const verified = await anchorRunReceipt(prepared.receiptId, hash);
       setReceipt(verified);
@@ -50,8 +54,8 @@ export function MainnetReceiptProof({
             {verified ? "Run receipt anchored on Arc mainnet" : "Arc mainnet run receipt"}
           </div>
           <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
-            Proves the completed run receipt and decision ledger. It is not proof of
-            creator payment settlement.
+            Uses Arc&apos;s Memo contract to prove the completed run receipt and decision
+            ledger. It is not proof of creator payment settlement.
           </p>
         </div>
         <span className={`pill ${verified ? "bg-buy/15 text-buy" : "bg-white/5 text-gray-400"}`}>

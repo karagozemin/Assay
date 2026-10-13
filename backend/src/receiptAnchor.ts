@@ -29,6 +29,7 @@ export async function verifyReceiptAnchor(input: {
   client: ReceiptAnchorRpc;
   txHash: string;
   signer: string;
+  anchorTarget: string;
   expectedCalldata: string;
 }): Promise<VerifiedReceiptAnchor> {
   if (!/^0x[a-fA-F0-9]{64}$/.test(input.txHash)) {
@@ -51,8 +52,8 @@ export async function verifyReceiptAnchor(input: {
   if (!sameAddress(transaction.from, input.signer)) {
     throw new Error("anchor transaction sender does not match authorization signer");
   }
-  if (!sameAddress(transaction.to, input.signer)) {
-    throw new Error("anchor transaction must be a self-transaction to the authorization signer");
+  if (!sameAddress(transaction.to, input.anchorTarget)) {
+    throw new Error("anchor transaction target is not the Arc Memo contract");
   }
   if (transaction.value !== 0n) throw new Error("anchor transaction value must be zero");
   if (transaction.input.toLowerCase() !== input.expectedCalldata.toLowerCase()) {

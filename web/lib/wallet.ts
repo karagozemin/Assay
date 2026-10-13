@@ -140,11 +140,13 @@ export async function ensureArcMainnet(): Promise<void> {
   }
 }
 
-/** User-signed zero-value self-tx that anchors, but does not settle, a run receipt. */
+/** User-signed zero-value Arc Memo call that anchors, but does not settle, a run receipt. */
 export async function sendMainnetReceiptAnchor(
   expectedSigner: string,
+  anchorTarget: string,
   calldata: string,
 ): Promise<string> {
+  if (!/^0x[a-fA-F0-9]{40}$/.test(anchorTarget)) throw new Error("Invalid anchor target.");
   if (!/^0x[a-fA-F0-9]+$/.test(calldata)) throw new Error("Invalid receipt calldata.");
   const provider = getProvider();
   const address = await connectWallet();
@@ -161,7 +163,7 @@ export async function sendMainnetReceiptAnchor(
     params: [
       {
         from: expectedSigner,
-        to: expectedSigner,
+        to: anchorTarget,
         value: "0x0",
         data: calldata,
       },
@@ -270,4 +272,3 @@ export async function authorizeSpending(capUsdc: number): Promise<SpendingAuthor
     signature,
   };
 }
-

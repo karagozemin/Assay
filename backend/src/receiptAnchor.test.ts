@@ -3,6 +3,7 @@ import test from "node:test";
 import { verifyReceiptAnchor, type ReceiptAnchorRpc } from "./receiptAnchor.ts";
 
 const signer = "0x1111111111111111111111111111111111111111";
+const anchorTarget = "0x5294E9927c3306DcBaDb03fe70b92e01cCede505";
 const txHash = `0x${"ab".repeat(32)}`;
 const expectedCalldata = `0x${"12".repeat(40)}`;
 
@@ -23,7 +24,7 @@ function rpc(overrides: {
     async getTransaction() {
       return {
         from: overrides.from ?? signer,
-        to: overrides.to === undefined ? signer : overrides.to,
+        to: overrides.to === undefined ? anchorTarget : overrides.to,
         input: overrides.input ?? expectedCalldata,
         value: overrides.value ?? 0n,
         chainId: overrides.txChainId === undefined ? 5042 : overrides.txChainId,
@@ -37,9 +38,9 @@ function rpc(overrides: {
 }
 
 const verify = (client: ReceiptAnchorRpc) =>
-  verifyReceiptAnchor({ client, txHash, signer, expectedCalldata });
+  verifyReceiptAnchor({ client, txHash, signer, anchorTarget, expectedCalldata });
 
-test("accepts a mined successful zero-value Arc mainnet self-transaction", async () => {
+test("accepts a mined successful zero-value Arc mainnet Memo transaction", async () => {
   const result = await verify(rpc());
   assert.deepEqual(result, { txHash, blockNumber: "42", chainId: 5042 });
 });
@@ -58,7 +59,7 @@ test("rejects wrong from address", async () => {
 test("rejects wrong to address", async () => {
   await assert.rejects(
     verify(rpc({ to: "0x2222222222222222222222222222222222222222" })),
-    /must be a self-transaction/,
+    /not the Arc Memo contract/,
   );
 });
 

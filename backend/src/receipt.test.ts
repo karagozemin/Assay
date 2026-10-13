@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { decodeFunctionData } from "viem";
 import type { Decision, Payment, RunReceiptRecord, Task } from "./types.ts";
 import {
   buildCanonicalRunReceipt,
@@ -9,6 +10,12 @@ import {
 } from "./receipt.ts";
 import { buildReceiptArtifact } from "./receiptArtifact.ts";
 import { runReceiptView } from "./receiptView.ts";
+import {
+  ARC_MEMO_ABI,
+  ARC_MEMO_CONTRACT,
+  ARC_USDC_CONTRACT,
+  buildReceiptAnchorPlan,
+} from "./arcMemo.ts";
 
 const task: Task = {
   id: "task-1",
@@ -79,9 +86,29 @@ test("expected calldata is ASCII ASSAY_V1 followed by exact receipt hash", () =>
   assert.equal((calldata.length - 2) / 2, 40);
 });
 
+test("Arc mainnet anchor plan targets Memo and commits to the exact receipt hash", () => {
+  const hash = receiptHash(makeReceipt());
+  const plan = buildReceiptAnchorPlan(hash, mandate.signer);
+  assert.equal(plan.anchorTarget, ARC_MEMO_CONTRACT);
+  assert.equal(plan.innerTarget, ARC_USDC_CONTRACT);
+  assert.equal(plan.memoId, hash);
+  assert.equal(plan.memoData, receiptCalldata(hash));
+  assert.match(plan.expectedCalldata, /^0x[a-fA-F0-9]+$/);
+  assert.ok(plan.expectedCalldata.length > plan.memoData.length);
+  const decoded = decodeFunctionData({ abi: ARC_MEMO_ABI, data: plan.expectedCalldata });
+  assert.equal(decoded.functionName, "memo");
+  assert.deepEqual(decoded.args, [
+    ARC_USDC_CONTRACT,
+    plan.targetCalldata,
+    hash,
+    plan.memoData,
+  ]);
+});
+
 const verifiedRecord = (): RunReceiptRecord => {
   const canonical = makeReceipt();
   const hash = receiptHash(canonical);
+  const anchorPlan = buildReceiptAnchorPlan(hash, mandate.signer);
   return {
     id: "receipt-1",
     taskId: task.id,
@@ -89,7 +116,7 @@ const verifiedRecord = (): RunReceiptRecord => {
     receiptHash: hash,
     canonicalJson: canonicalJson(canonical),
     signer: mandate.signer,
-    expectedCalldata: receiptCalldata(hash),
+    expectedCalldata: anchorPlan.expectedCalldata,
     chainId: 5042,
     completionTimestamp: canonical.completionTimestamp,
     createdAt: canonical.backendReceiptCreatedAt,
@@ -105,6 +132,7 @@ test("mainnet proof artifact contains the required schema and honest scope", () 
   const artifact = buildReceiptArtifact(verifiedRecord());
   assert.equal(artifact.chainId, 5042);
   assert.equal(artifact.receiptHash, verifiedRecord().receiptHash);
+  assert.equal(artifact.anchorTarget, ARC_MEMO_CONTRACT);
   assert.equal(
     artifact.proofScope,
     "run_receipt_and_decision_ledger_not_creator_payment_settlement",

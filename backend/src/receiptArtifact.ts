@@ -1,6 +1,7 @@
 import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { RunReceiptRecord } from "./types.ts";
+import { ARC_MEMO_CONTRACT, ARC_USDC_CONTRACT } from "./arcMemo.ts";
 
 export interface MainnetReceiptAnchorArtifact {
   artifactVersion: "assay.mainnet-receipt-anchor.v1";
@@ -14,6 +15,8 @@ export interface MainnetReceiptAnchorArtifact {
   completionTimestamp: string;
   verifiedAt: string;
   expectedCalldata: string;
+  anchorTarget: string;
+  innerTarget: string;
   hashInput: {
     encoding: "utf-8";
     canonicalJson: string;
@@ -44,6 +47,8 @@ export function buildReceiptArtifact(receipt: RunReceiptRecord): MainnetReceiptA
     completionTimestamp: receipt.completionTimestamp,
     verifiedAt: receipt.verifiedAt,
     expectedCalldata: receipt.expectedCalldata,
+    anchorTarget: ARC_MEMO_CONTRACT,
+    innerTarget: ARC_USDC_CONTRACT,
     hashInput: { encoding: "utf-8", canonicalJson: receipt.canonicalJson },
     canonicalReceipt: JSON.parse(receipt.canonicalJson),
     proofScope: "run_receipt_and_decision_ledger_not_creator_payment_settlement",

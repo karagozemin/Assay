@@ -85,6 +85,7 @@ export interface RunReceiptRecord {
   receiptHash: string;
   canonicalJson: string;
   signer: string;
+  /** Exact calldata for the Arc Memo contract anchor transaction. */
   expectedCalldata: string;
   chainId: number;
   completionTimestamp: string;

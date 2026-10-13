@@ -29,9 +29,9 @@ import { classifyPaymentProvenance } from "./provenance.ts";
 import {
   buildCanonicalRunReceipt,
   canonicalJson,
-  receiptCalldata,
   receiptHash,
 } from "./receipt.ts";
+import { ARC_MEMO_CONTRACT, buildReceiptAnchorPlan } from "./arcMemo.ts";
 import { verifyReceiptAnchor, type ReceiptAnchorRpc } from "./receiptAnchor.ts";
 import { buildReceiptArtifact, writeReceiptArtifact } from "./receiptArtifact.ts";
 import { runReceiptView } from "./receiptView.ts";
@@ -366,8 +366,16 @@ app.post("/receipts/from-run", (req, res) => {
     return res.status(400).json({ error: "taskId and authorizationId are required" });
   }
 
-  const existing = store.getRunReceiptForTask(String(taskId), String(authorizationId));
-  if (existing) return res.json(receiptView(existing));
+  let existing = store.getRunReceiptForTask(String(taskId), String(authorizationId));
+  if (existing) {
+    if (existing.anchorStatus === "pending") {
+      const plan = buildReceiptAnchorPlan(existing.receiptHash, existing.signer);
+      if (existing.expectedCalldata.toLowerCase() !== plan.expectedCalldata.toLowerCase()) {
+        existing = store.updatePendingRunReceiptCalldata(existing.id, plan.expectedCalldata);
+      }
+    }
+    return res.json(receiptView(existing));
+  }
 
   const task = store.getTask(String(taskId));
   if (!task) return res.status(404).json({ error: "task not found" });
@@ -389,13 +397,14 @@ app.post("/receipts/from-run", (req, res) => {
     });
     const canonical = canonicalJson(canonicalReceipt);
     const hash = receiptHash(canonicalReceipt);
+    const anchorPlan = buildReceiptAnchorPlan(hash, mandate.signer);
     const receipt = store.createRunReceipt({
       taskId: task.id,
       authorizationId: mandate.id,
       receiptHash: hash,
       canonicalJson: canonical,
       signer: mandate.signer.toLowerCase(),
-      expectedCalldata: receiptCalldata(hash),
+      expectedCalldata: anchorPlan.expectedCalldata,
       chainId: config.arcMainnet.chainId,
       completionTimestamp: canonicalReceipt.completionTimestamp,
       createdAt,
@@ -422,6 +431,7 @@ app.post("/receipts/:id/anchor", async (req, res) => {
       client: arcMainnetClient as unknown as ReceiptAnchorRpc,
       txHash,
       signer: receipt.signer,
+      anchorTarget: ARC_MEMO_CONTRACT,
       expectedCalldata: receipt.expectedCalldata,
     });
     const explorerUrl = `${config.arcMainnet.explorerUrl}/tx/${verified.txHash}`;

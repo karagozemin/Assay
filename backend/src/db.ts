@@ -423,6 +423,21 @@ export function getRunReceiptForTask(
   );
 }
 
+/** Upgrade a pending receipt from the legacy EOA self-tx plan to the Arc Memo plan. */
+export function updatePendingRunReceiptCalldata(
+  id: string,
+  expectedCalldata: string,
+): RunReceiptRecord {
+  db.prepare(
+    `UPDATE run_receipts
+     SET expectedCalldata = ?
+     WHERE id = ? AND anchorStatus = 'pending'`,
+  ).run(expectedCalldata, id);
+  const receipt = getRunReceipt(id);
+  if (!receipt) throw new Error("run receipt not found after anchor plan update");
+  return receipt;
+}
+
 export function markRunReceiptVerified(input: {
   id: string;
   txHash: string;

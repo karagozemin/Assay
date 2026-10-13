@@ -53,7 +53,7 @@ graph TB
     end
 
     subgraph Mainnet["⛓️ Arc mainnet · eip155:5042"]
-        ANCHOR["user-signed 0-value self-tx<br/>ASSAY_V1 + receipt hash"]
+        ANCHOR["user-signed Arc Memo call<br/>memoId = receipt hash"]
     end
 
     RUN -->|run task| API --> GRAPH --> ENGINE

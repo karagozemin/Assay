@@ -45,8 +45,8 @@ paid.
 - An Arc testnet x402/Circle Gateway integration when a funded testnet paymaster is
   manually configured.
 - Explicit separation of demo events, payment intents, and testnet settlement records.
-- A canonical run receipt that a user can anchor with a zero-value, user-signed Arc
-  mainnet self-transaction; the server independently verifies and persists the proof.
+- A canonical run receipt that a user can anchor with a zero-value, user-signed call to
+  Arc's predeployed Memo contract; the server independently verifies and persists the proof.
 
 The seeded dataset contains five demo creator records and eleven deliberately
 overlapping sources. It exists to exercise refusal, redundancy, budget, cache, and
@@ -81,6 +81,7 @@ backend/               Node/TypeScript service
   src/config.ts        Production fail-closed configuration
   src/arc.ts           Arc testnet constants and wallet-control verification
   src/receipt.ts       Canonical receipt, keccak256 hash, and ASSAY_V1 calldata
+  src/arcMemo.ts       Arc Memo contract receipt-anchor transaction builder
   src/receiptAnchor.ts Arc mainnet transaction verification
   src/receiptArtifact.ts Machine-readable verified proof artifact
   src/db.ts            SQLite store and provenance migration
@@ -218,15 +219,20 @@ payment items with explicit provenance, ledger completion timestamp, and receipt
 creation timestamp. It hashes those UTF-8 bytes with `keccak256`.
 
 The browser asks the authorization signer to switch to Arc mainnet (chain `5042`) and
-send a zero-value self-transaction whose calldata is the ASCII bytes `ASSAY_V1` followed
-by the exact 32-byte receipt hash. The backend only marks the receipt verified after its
-mainnet RPC confirms all of the following:
+send a zero-value call to Arc's predeployed
+[Memo contract](https://docs.arc.io/arc/concepts/transaction-memos). The wrapper makes a
+read-only USDC `balanceOf(signer)` child call, uses the receipt hash as `memoId`, and stores
+the ASCII bytes `ASSAY_V1` followed by the exact 32-byte receipt hash as the memo bytes.
+This does not transfer USDC or change an allowance. The backend only marks the receipt
+verified after its mainnet RPC confirms all of the following:
 
 - RPC and transaction chain are Arc mainnet (`5042`);
 - transaction is mined successfully;
-- `from` and `to` both equal the authorization signer;
+- `from` equals the authorization signer;
+- `to` equals Arc's official Memo predeploy
+  (`0x5294E9927c3306DcBaDb03fe70b92e01cCede505`);
 - value is zero;
-- calldata exactly matches the prepared receipt.
+- calldata exactly matches the prepared Memo call, including the receipt hash and memo bytes.
 
 Verified records are persisted in SQLite. A machine-readable artifact is downloadable
 from `GET /receipts/:id/artifact`; the backend also writes
@@ -243,10 +249,11 @@ and explorer URL.
 3. Inspect the decision ledger and provenance-labelled payment stage. Demo/test events
    are not creator-payment settlements.
 4. Click **Create Arc mainnet receipt proof** after synthesis completes.
-5. Approve the wallet network switch and sign the zero-value Arc mainnet self-transaction.
+5. Approve the wallet network switch and sign the zero-value Arc Memo transaction.
 6. Wait for backend verification, then open the displayed Arc explorer link.
 7. Download **Receipt artifact** and verify that its `receiptHash` is the keccak256 of
-   `hashInput.canonicalJson` and that its calldata matches `ASSAY_V1 + receiptHash`.
+   `hashInput.canonicalJson` and that its Memo calldata commits to
+   `ASSAY_V1 + receiptHash`.
 
 Until a real transaction completes this path and its explorer URL/artifact are retained,
 do not claim that a mainnet proof exists. Even after verification, describe it as an Arc
