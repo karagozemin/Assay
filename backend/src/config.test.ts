@@ -6,7 +6,7 @@ const productionEnv = (): NodeJS.ProcessEnv => ({
   ASSAY_RUNTIME: "production",
   ASSAY_TEST_SETTLE: "0",
   ASSAY_MOCK_PAY: "0",
-  CORS_ORIGIN: "https://assay-web.vercel.app",
+  CORS_ORIGIN: "https://assay-web.site,https://assay-web.vercel.app",
   ARC_MAINNET_CHAIN_ID: "5042",
   ARC_MAINNET_RPC_URL: "https://rpc.mainnet.arc.io",
   ARC_MAINNET_EXPLORER_URL: "https://explorer.arc.io",
@@ -35,5 +35,8 @@ test("production requires Arc mainnet config", () => {
 test("production accepts the Arc mainnet boundary", () => {
   const config = loadBackendConfig(productionEnv());
   assert.equal(config.arcMainnet?.chainId, 5042);
-  assert.deepEqual(config.corsOrigins, ["https://assay-web.vercel.app"]);
+  assert.deepEqual(config.corsOrigins, [
+    "https://assay-web.site",
+    "https://assay-web.vercel.app",
+  ]);
 });
