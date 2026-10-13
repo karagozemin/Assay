@@ -9,7 +9,7 @@ what clears a budget-aware threshold, and records why it refused everything else
 repository includes an Arc testnet x402 integration, a provenance-aware demo path, and
 a user-signed Arc mainnet run-receipt anchor.
 
-Live frontend: <https://assay-web.site/app>
+Live frontend: <https://www.assay-web.site/app>
 
 ## Proof boundary
 
@@ -152,7 +152,7 @@ ASSAY_RUNTIME=production
 ASSAY_DB=/var/data/assay.sqlite
 ASSAY_TEST_SETTLE=0
 ASSAY_MOCK_PAY=0
-CORS_ORIGIN=https://assay-web.site,https://assay-web.vercel.app
+CORS_ORIGIN=https://www.assay-web.site,https://assay-web.site,https://assay-web.vercel.app
 ARC_MAINNET_CHAIN_ID=5042
 ARC_MAINNET_RPC_URL=https://rpc.mainnet.arc.io
 ARC_MAINNET_EXPLORER_URL=https://explorer.arc.io
@@ -180,7 +180,7 @@ small Arc mainnet gas balance in that wallet.
 ```dotenv
 ASSAY_RUNTIME=production
 ASSAY_BACKEND_URL=https://assay-backend-07w0.onrender.com
-CORS_ORIGIN=https://assay-web.site,https://assay-web.vercel.app
+CORS_ORIGIN=https://www.assay-web.site,https://assay-web.site,https://assay-web.vercel.app
 ASSAY_TEST_SETTLE=0
 ASSAY_MOCK_PAY=0
 ```
@@ -207,7 +207,7 @@ curl --fail https://assay-backend-07w0.onrender.com/health
 curl --fail https://assay-agent.onrender.com/health
 ```
 
-Then redeploy Vercel and open <https://assay-web.site/app>. Payment-stage events
+Then redeploy Vercel and open <https://www.assay-web.site/app>. Payment-stage events
 must be labelled by provenance. A demo/test record must never appear as settled USDC.
 
 ## Arc mainnet run-receipt proof
@@ -237,7 +237,7 @@ and explorer URL.
 
 ### Reviewer path
 
-1. Open <https://assay-web.site/app> and connect the wallet that will sign the
+1. Open <https://www.assay-web.site/app> and connect the wallet that will sign the
    authorization.
 2. Complete the authorization → agent run flow.
 3. Inspect the decision ledger and provenance-labelled payment stage. Demo/test events

@@ -7,7 +7,10 @@ def _production_env():
     return {
         "ASSAY_RUNTIME": "production",
         "ASSAY_BACKEND_URL": "https://assay-backend-07w0.onrender.com",
-        "CORS_ORIGIN": "https://assay-web.site,https://assay-web.vercel.app",
+        "CORS_ORIGIN": (
+            "https://www.assay-web.site,https://assay-web.site,"
+            "https://assay-web.vercel.app"
+        ),
         "ASSAY_TEST_SETTLE": "0",
         "ASSAY_MOCK_PAY": "0",
     }
@@ -47,6 +50,7 @@ def test_production_uses_env_backend_only():
     config = load_agent_config(_production_env())
     assert config.backend_url == "https://assay-backend-07w0.onrender.com"
     assert config.cors_origins == (
+        "https://www.assay-web.site",
         "https://assay-web.site",
         "https://assay-web.vercel.app",
     )

@@ -26,7 +26,7 @@ services:
       - key: ASSAY_MOCK_PAY
         value: "0"
       - key: CORS_ORIGIN
-        value: https://assay-web.site,https://assay-web.vercel.app
+        value: https://www.assay-web.site,https://assay-web.site,https://assay-web.vercel.app
       - key: ARC_MAINNET_CHAIN_ID
         value: "5042"
       - key: ARC_MAINNET_RPC_URL
@@ -47,7 +47,7 @@ services:
       - key: ASSAY_BACKEND_URL
         value: https://assay-backend-07w0.onrender.com
       - key: CORS_ORIGIN
-        value: https://assay-web.site,https://assay-web.vercel.app
+        value: https://www.assay-web.site,https://assay-web.site,https://assay-web.vercel.app
       - key: ASSAY_TEST_SETTLE
         value: "0"
       - key: ASSAY_MOCK_PAY
