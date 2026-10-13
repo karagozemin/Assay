@@ -9,7 +9,7 @@ export interface BackendConfig {
     chainId: 5042;
     rpcUrl: string;
     explorerUrl: string;
-  } | null;
+  };
 }
 
 const enabled = (value: string | undefined) => value === "1";
@@ -50,22 +50,22 @@ export function loadBackendConfig(env: NodeJS.ProcessEnv = process.env): Backend
     .map((origin) => origin.trim().replace(/\/$/, ""))
     .filter(Boolean);
 
-  if (runtime !== "production") {
-    return { runtime, host: "0.0.0.0", port, corsOrigins, arcMainnet: null };
-  }
-
-  if (enabled(env.ASSAY_TEST_SETTLE)) {
+  if (runtime === "production" && enabled(env.ASSAY_TEST_SETTLE)) {
     throw new Error("[config] ASSAY_TEST_SETTLE=1 is forbidden in production");
   }
-  if (enabled(env.ASSAY_MOCK_PAY)) {
+  if (runtime === "production" && enabled(env.ASSAY_MOCK_PAY)) {
     throw new Error("[config] ASSAY_MOCK_PAY=1 is forbidden in production");
   }
-  if (corsOrigins.length === 0 || corsOrigins.includes("*")) {
+  if (runtime === "production" && (corsOrigins.length === 0 || corsOrigins.includes("*"))) {
     throw new Error("[config] production CORS_ORIGIN must contain explicit origins");
   }
-  corsOrigins.forEach((origin) => httpUrl(origin, "CORS_ORIGIN"));
+  if (runtime === "production") {
+    corsOrigins.forEach((origin) => httpUrl(origin, "CORS_ORIGIN"));
+  }
 
-  const chainId = Number(required(env, "ARC_MAINNET_CHAIN_ID"));
+  const chainId = Number(
+    runtime === "production" ? required(env, "ARC_MAINNET_CHAIN_ID") : env.ARC_MAINNET_CHAIN_ID ?? 5042,
+  );
   if (chainId !== 5042) {
     throw new Error("[config] ARC_MAINNET_CHAIN_ID must be 5042");
   }
@@ -77,9 +77,16 @@ export function loadBackendConfig(env: NodeJS.ProcessEnv = process.env): Backend
     corsOrigins,
     arcMainnet: {
       chainId: 5042,
-      rpcUrl: httpUrl(required(env, "ARC_MAINNET_RPC_URL"), "ARC_MAINNET_RPC_URL"),
+      rpcUrl: httpUrl(
+        runtime === "production"
+          ? required(env, "ARC_MAINNET_RPC_URL")
+          : env.ARC_MAINNET_RPC_URL ?? "https://rpc.mainnet.arc.io",
+        "ARC_MAINNET_RPC_URL",
+      ),
       explorerUrl: httpUrl(
-        required(env, "ARC_MAINNET_EXPLORER_URL"),
+        runtime === "production"
+          ? required(env, "ARC_MAINNET_EXPLORER_URL")
+          : env.ARC_MAINNET_EXPLORER_URL ?? "https://explorer.arc.io",
         "ARC_MAINNET_EXPLORER_URL",
       ),
     },

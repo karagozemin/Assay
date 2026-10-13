@@ -9,8 +9,9 @@
 > **Arc testnet** — logging every decision, *especially the refusals*.
 
 Payment provenance is explicit: demo/test events are not settlement. The x402 path settles
-testnet USDC only when a funded testnet paymaster is configured. An Arc mainnet run-receipt
-anchor is not implemented yet; see the current proof boundary in [README.md](README.md).
+testnet USDC only when a funded testnet paymaster is configured. Separately, a user can
+anchor the completed run receipt on Arc mainnet. That anchor proves the receipt and
+decision ledger, not creator-payment settlement; see [README.md](README.md).
 
 This document is the map of the system: what each part does, how data flows, and where the
 money actually moves. Prose is kept short; each section leads with a one-liner and then a
@@ -43,11 +44,16 @@ graph TB
         X402["x402 seller gate<br/>/content/:id"]
         PAY["/pay/settle<br/>buyer paymaster"]
         LEDGER["append-only ledger<br/>decisions + payments"]
+        RECEIPT["canonical run receipt<br/>hash + anchor verifier"]
         DB[("SQLite")]
     end
 
     subgraph Chain["⛓️ Arc testnet · eip155:5042002"]
         GW["Circle Gateway<br/>nanopayment facilitator"]
+    end
+
+    subgraph Mainnet["⛓️ Arc mainnet · eip155:5042"]
+        ANCHOR["user-signed 0-value self-tx<br/>ASSAY_V1 + receipt hash"]
     end
 
     RUN -->|run task| API --> GRAPH --> ENGINE
@@ -56,8 +62,12 @@ graph TB
     DASH -->|poll| LEDGER
     PAY -->|USDC nanopayment| GW
     X402 -.->|402 → verify| GW
+    RUN -->|prepare + submit tx hash| RECEIPT
+    RUN -->|wallet signs| ANCHOR
+    RECEIPT -->|RPC verifies| ANCHOR
     REG --- DB
     LEDGER --- DB
+    RECEIPT --- DB
 ```
 
 **Reading it:** the browser kicks off a run → the agent discovers candidate cards, scores

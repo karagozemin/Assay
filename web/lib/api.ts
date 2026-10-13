@@ -86,6 +86,28 @@ export type Metrics = {
   paymentIntentEvents: number;
 };
 
+export type RunReceiptProof = {
+  receiptId: string;
+  taskId: string;
+  receiptHash: string;
+  canonicalReceipt: Record<string, unknown>;
+  canonicalJson: string;
+  expectedCalldata: string;
+  signer: string;
+  chainId: 5042;
+  explorerBaseUrl: string;
+  anchorStatus: "pending" | "verified";
+  verificationStatus: "pending" | "verified";
+  txHash: string | null;
+  blockNumber: string | null;
+  explorerUrl: string | null;
+  completionTimestamp: string;
+  receiptCreatedAt: string;
+  verifiedAt: string | null;
+  artifactUrl: string | null;
+  proofScope: string;
+};
+
 /* ------------------------------ helpers ---------------------------------- */
 
 async function json<T>(res: Response): Promise<T> {
@@ -247,6 +269,23 @@ export const registerAuthorization = async (auth: {
     throw error;
   }
 };
+
+export const createRunReceipt = (taskId: string, authorizationId: string) =>
+  fetch(`${BACKEND}/receipts/from-run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ taskId, authorizationId }),
+  }).then(json<RunReceiptProof>);
+
+export const anchorRunReceipt = (receiptId: string, txHash: string) =>
+  fetch(`${BACKEND}/receipts/${encodeURIComponent(receiptId)}/anchor`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ txHash }),
+  }).then(json<RunReceiptProof>);
+
+export const receiptArtifactUrl = (receipt: RunReceiptProof) =>
+  receipt.artifactUrl ? `${BACKEND}${receipt.artifactUrl}` : null;
 
 export const fmtUsd = (n: number | null | undefined) => {
 

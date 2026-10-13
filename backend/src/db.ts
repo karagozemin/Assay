@@ -10,6 +10,7 @@ import type {
   DecisionKind,
   Payment,
   PaymentProvenance,
+  RunReceiptRecord,
   Task,
 } from "./types.ts";
 
@@ -78,10 +79,30 @@ db.exec(`
     createdAt TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS run_receipts (
+    id TEXT PRIMARY KEY,
+    taskId TEXT NOT NULL REFERENCES tasks(id),
+    authorizationId TEXT NOT NULL,
+    receiptHash TEXT NOT NULL UNIQUE,
+    canonicalJson TEXT NOT NULL,
+    signer TEXT NOT NULL,
+    expectedCalldata TEXT NOT NULL,
+    chainId INTEGER NOT NULL,
+    completionTimestamp TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    anchorStatus TEXT NOT NULL DEFAULT 'pending',
+    txHash TEXT UNIQUE,
+    blockNumber TEXT,
+    explorerUrl TEXT,
+    verifiedAt TEXT,
+    UNIQUE(taskId, authorizationId)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_sources_creator ON sources(creatorId);
   CREATE INDEX IF NOT EXISTS idx_decisions_task ON decisions(taskId);
   CREATE INDEX IF NOT EXISTS idx_payments_task ON payments(taskId);
   CREATE INDEX IF NOT EXISTS idx_payments_creator ON payments(creatorId);
+  CREATE INDEX IF NOT EXISTS idx_receipts_task ON run_receipts(taskId);
 `);
 
 // Migrate older DBs that predate the on-chain proof column.
@@ -295,7 +316,7 @@ export function recordDecision(input: {
 export function listDecisions(taskId?: string): Decision[] {
   if (taskId) {
     return rows<Decision>(
-      db.prepare("SELECT * FROM decisions WHERE taskId = ? ORDER BY createdAt"),
+      db.prepare("SELECT * FROM decisions WHERE taskId = ? ORDER BY createdAt, id"),
       taskId,
     );
   }
@@ -337,11 +358,86 @@ export function recordPayment(input: {
 export function listPayments(taskId?: string): Payment[] {
   if (taskId) {
     return rows<Payment>(
-      db.prepare("SELECT * FROM payments WHERE taskId = ? ORDER BY createdAt"),
+      db.prepare("SELECT * FROM payments WHERE taskId = ? ORDER BY createdAt, id"),
       taskId,
     );
   }
   return rows<Payment>(db.prepare("SELECT * FROM payments ORDER BY createdAt DESC"));
+}
+
+/* ----------------------------- run receipts ----------------------------- */
+
+export function createRunReceipt(input: {
+  taskId: string;
+  authorizationId: string;
+  receiptHash: string;
+  canonicalJson: string;
+  signer: string;
+  expectedCalldata: string;
+  chainId: number;
+  completionTimestamp: string;
+  createdAt: string;
+}): RunReceiptRecord {
+  const receipt: RunReceiptRecord = {
+    id: randomUUID(),
+    ...input,
+    anchorStatus: "pending",
+    txHash: null,
+    blockNumber: null,
+    explorerUrl: null,
+    verifiedAt: null,
+  };
+  db.prepare(
+    `INSERT INTO run_receipts
+       (id, taskId, authorizationId, receiptHash, canonicalJson, signer,
+        expectedCalldata, chainId, completionTimestamp, createdAt, anchorStatus)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    receipt.id,
+    receipt.taskId,
+    receipt.authorizationId,
+    receipt.receiptHash,
+    receipt.canonicalJson,
+    receipt.signer,
+    receipt.expectedCalldata,
+    receipt.chainId,
+    receipt.completionTimestamp,
+    receipt.createdAt,
+    receipt.anchorStatus,
+  );
+  return receipt;
+}
+
+export function getRunReceipt(id: string): RunReceiptRecord | undefined {
+  return row<RunReceiptRecord>(db.prepare("SELECT * FROM run_receipts WHERE id = ?"), id);
+}
+
+export function getRunReceiptForTask(
+  taskId: string,
+  authorizationId: string,
+): RunReceiptRecord | undefined {
+  return row<RunReceiptRecord>(
+    db.prepare("SELECT * FROM run_receipts WHERE taskId = ? AND authorizationId = ?"),
+    taskId,
+    authorizationId,
+  );
+}
+
+export function markRunReceiptVerified(input: {
+  id: string;
+  txHash: string;
+  blockNumber: string;
+  explorerUrl: string;
+  verifiedAt: string;
+}): RunReceiptRecord {
+  db.prepare(
+    `UPDATE run_receipts
+     SET anchorStatus = 'verified', txHash = ?, blockNumber = ?, explorerUrl = ?, verifiedAt = ?
+     WHERE id = ? AND anchorStatus = 'pending'`,
+  ).run(input.txHash, input.blockNumber, input.explorerUrl, input.verifiedAt, input.id);
+  const receipt = getRunReceipt(input.id);
+  if (!receipt) throw new Error("run receipt not found after anchor verification");
+  return receipt;
 }
 
 /* --------------------------- payout / metrics ---------------------------- */

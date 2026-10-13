@@ -9,7 +9,7 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import { formatUnits } from "viem";
+import { createPublicClient, formatUnits, http } from "viem";
 import { randomUUID } from "node:crypto";
 import { ARC, verifyRegistrationTx } from "./arc.ts";
 
@@ -20,13 +20,24 @@ import {
   registerAuthorization,
   authorizeSpend,
   refundSpend,
+  getMandateSummary,
   type SignedAuthorization,
 } from "./mandate.ts";
 import * as store from "./db.ts";
 import { loadBackendConfig } from "./config.ts";
 import { classifyPaymentProvenance } from "./provenance.ts";
+import {
+  buildCanonicalRunReceipt,
+  canonicalJson,
+  receiptCalldata,
+  receiptHash,
+} from "./receipt.ts";
+import { verifyReceiptAnchor, type ReceiptAnchorRpc } from "./receiptAnchor.ts";
+import { buildReceiptArtifact, writeReceiptArtifact } from "./receiptArtifact.ts";
+import { runReceiptView } from "./receiptView.ts";
 
 const config = loadBackendConfig();
+const arcMainnetClient = createPublicClient({ transport: http(config.arcMainnet.rpcUrl) });
 const app = express();
 app.use(
   cors({
@@ -344,6 +355,114 @@ app.get("/tasks/:id", (req, res) => {
   });
 });
 
+/* ------------------------ Arc mainnet run receipts ----------------------- */
+
+const receiptView = (receipt: Parameters<typeof runReceiptView>[0]) =>
+  runReceiptView(receipt, config.arcMainnet.explorerUrl);
+
+app.post("/receipts/from-run", (req, res) => {
+  const { taskId, authorizationId } = req.body ?? {};
+  if (!taskId || !authorizationId) {
+    return res.status(400).json({ error: "taskId and authorizationId are required" });
+  }
+
+  const existing = store.getRunReceiptForTask(String(taskId), String(authorizationId));
+  if (existing) return res.json(receiptView(existing));
+
+  const task = store.getTask(String(taskId));
+  if (!task) return res.status(404).json({ error: "task not found" });
+  const mandate = getMandateSummary(String(authorizationId));
+  if (!mandate) {
+    return res.status(404).json({
+      error: "spending authorization not found; create the receipt before the backend restarts",
+    });
+  }
+
+  try {
+    const createdAt = new Date().toISOString();
+    const canonicalReceipt = buildCanonicalRunReceipt({
+      task,
+      mandate,
+      decisions: store.listDecisions(task.id),
+      payments: store.listPayments(task.id),
+      backendReceiptCreatedAt: createdAt,
+    });
+    const canonical = canonicalJson(canonicalReceipt);
+    const hash = receiptHash(canonicalReceipt);
+    const receipt = store.createRunReceipt({
+      taskId: task.id,
+      authorizationId: mandate.id,
+      receiptHash: hash,
+      canonicalJson: canonical,
+      signer: mandate.signer.toLowerCase(),
+      expectedCalldata: receiptCalldata(hash),
+      chainId: config.arcMainnet.chainId,
+      completionTimestamp: canonicalReceipt.completionTimestamp,
+      createdAt,
+    });
+    return res.status(201).json(receiptView(receipt));
+  } catch (error: any) {
+    return res.status(400).json({ error: error?.message ?? "failed to create run receipt" });
+  }
+});
+
+app.post("/receipts/:id/anchor", async (req, res) => {
+  const receipt = store.getRunReceipt(req.params.id);
+  if (!receipt) return res.status(404).json({ error: "run receipt not found" });
+  const txHash = String(req.body?.txHash ?? "");
+  if (receipt.anchorStatus === "verified") {
+    if (receipt.txHash?.toLowerCase() !== txHash.toLowerCase()) {
+      return res.status(409).json({ error: "run receipt is already anchored by another tx" });
+    }
+    return res.json(receiptView(receipt));
+  }
+
+  try {
+    const verified = await verifyReceiptAnchor({
+      client: arcMainnetClient as unknown as ReceiptAnchorRpc,
+      txHash,
+      signer: receipt.signer,
+      expectedCalldata: receipt.expectedCalldata,
+    });
+    const explorerUrl = `${config.arcMainnet.explorerUrl}/tx/${verified.txHash}`;
+    const anchored = store.markRunReceiptVerified({
+      id: receipt.id,
+      txHash: verified.txHash,
+      blockNumber: verified.blockNumber,
+      explorerUrl,
+      verifiedAt: new Date().toISOString(),
+    });
+    try {
+      writeReceiptArtifact(anchored, store.DB_PATH);
+    } catch (artifactError) {
+      console.error("[receipt] verified but artifact file write failed", artifactError);
+    }
+    return res.json(receiptView(anchored));
+  } catch (error: any) {
+    const message = error?.message ?? "Arc mainnet anchor verification failed";
+    return res.status(message.includes("not mined yet") ? 409 : 400).json({ error: message });
+  }
+});
+
+app.get("/receipts/:id/artifact", (req, res) => {
+  const receipt = store.getRunReceipt(req.params.id);
+  if (!receipt) return res.status(404).json({ error: "run receipt not found" });
+  if (receipt.anchorStatus !== "verified") {
+    return res.status(409).json({ error: "run receipt is not anchored yet" });
+  }
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="mainnet-receipt-anchor-${receipt.id}.json"`,
+  );
+  return res.json(buildReceiptArtifact(receipt));
+});
+
+app.get("/receipts/:id", (req, res) => {
+  const receipt = store.getRunReceipt(req.params.id);
+  if (!receipt) return res.status(404).json({ error: "run receipt not found" });
+  return res.json(receiptView(receipt));
+});
+
 /* ------------------------------- ledger ---------------------------------- */
 
 /** The agent posts every decision here (BUY / SKIP / CACHE) with its rationale. */
@@ -418,5 +537,6 @@ app.listen(config.port, config.host, () => {
   console.log(`  registry:  POST /creators, POST /sources, GET /discover`);
   console.log(`  x402:      GET  /content/:sourceId`);
   console.log(`  ledger:    POST /ledger/decisions, POST /ledger/payments`);
+  console.log(`  receipts:  POST /receipts/from-run, GET /receipts/:id`);
   console.log(`  dashboard: GET  /payouts, GET /metrics`);
 });

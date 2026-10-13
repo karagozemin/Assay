@@ -25,6 +25,7 @@ out/
 *.sqlite3
 *.db
 backend/data/*.sqlite*
+backend/data/artifacts/
 agent/data/*.sqlite*
 
 # logs

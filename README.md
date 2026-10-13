@@ -6,29 +6,34 @@
 
 Assay ranks paid research sources by marginal value-of-information (VoI), buys only
 what clears a budget-aware threshold, and records why it refused everything else. The
-repository includes an Arc testnet x402 integration and a provenance-aware demo path.
+repository includes an Arc testnet x402 integration, a provenance-aware demo path, and
+a user-signed Arc mainnet run-receipt anchor.
 
 Live frontend: <https://assay-web.vercel.app/app>
 
 ## Proof boundary
 
-Assay currently distinguishes these payment-stage records:
+Assay distinguishes these provenance and proof records:
 
 | Provenance | Meaning |
 | --- | --- |
 | `demo_test_settlement` | Local/demo event. Not USDC settlement. |
 | `arc_testnet_x402` | Arc testnet x402 result with a settlement identifier. |
 | `payment_intent` | A payment-stage intent without verified settlement. |
-| `arc_mainnet_receipt_anchor` | Reserved for the next receipt-anchor stage; not implemented yet. |
+| `arc_mainnet_receipt_anchor` | A verified Arc mainnet anchor for the run receipt. Not creator-payment settlement. |
 
 `test-settle-*` and `0xmock*` identifiers are always classified as
 `demo_test_settlement`. They are visible in the ledger, but excluded from the dashboard's
 “testnet USDC settled” totals and never described as creator payouts.
 
-This repository does **not yet contain an Arc mainnet receipt anchor or real Arc
-mainnet creator-payment settlement**. The mainnet environment values required in
-production are a fail-closed boundary for the next receipt-anchor patch. Configuring an
-RPC URL is not evidence of a mainnet transaction.
+The code can create and verify a user-signed Arc mainnet run-receipt anchor. Assay may
+only display **“Run receipt anchored on Arc mainnet”** after the backend verifies the
+transaction through the configured mainnet RPC. Configuring an RPC URL, preparing a
+receipt, or submitting an unmined transaction is not evidence of a mainnet anchor.
+
+No Arc mainnet creator-payment settlement is claimed. The anchor proves the canonical
+run receipt and decision ledger described below; it does not prove that a creator was
+paid.
 
 ## What the prototype demonstrates
 
@@ -40,6 +45,8 @@ RPC URL is not evidence of a mainnet transaction.
 - An Arc testnet x402/Circle Gateway integration when a funded testnet paymaster is
   manually configured.
 - Explicit separation of demo events, payment intents, and testnet settlement records.
+- A canonical run receipt that a user can anchor with a zero-value, user-signed Arc
+  mainnet self-transaction; the server independently verifies and persists the proof.
 
 The seeded dataset contains five demo creator records and eleven deliberately
 overlapping sources. It exists to exercise refusal, redundancy, budget, cache, and
@@ -73,6 +80,9 @@ backend/               Node/TypeScript service
   src/server.ts        Registry, authorization, x402, ledger, metrics, health
   src/config.ts        Production fail-closed configuration
   src/arc.ts           Arc testnet constants and wallet-control verification
+  src/receipt.ts       Canonical receipt, keccak256 hash, and ASSAY_V1 calldata
+  src/receiptAnchor.ts Arc mainnet transaction verification
+  src/receiptArtifact.ts Machine-readable verified proof artifact
   src/db.ts            SQLite store and provenance migration
 
 web/                   Next.js demo UI
@@ -156,6 +166,10 @@ Without a funded testnet paymaster, a live run fails the purchase closed, does n
 protected content, does not increment spend, and records an uncharged `payment_intent`
 for the UI. The seeded `demo_test_settlement` rows remain separate from these intents.
 
+The Arc mainnet receipt anchor also needs no server wallet or private key. The user signs
+and broadcasts the zero-value transaction in their browser wallet. They still need a
+small Arc mainnet gas balance in that wallet.
+
 ### Agent environment
 
 ```dotenv
@@ -191,12 +205,44 @@ curl --fail https://assay-agent.onrender.com/health
 Then redeploy Vercel and open <https://assay-web.vercel.app/app>. Payment-stage events
 must be labelled by provenance. A demo/test record must never appear as settled USDC.
 
-## Remaining mainnet step
+## Arc mainnet run-receipt proof
 
-Before an Arc Microgrants submission claims an Arc mainnet component, implement and
-broadcast the separately scoped user-signed run-receipt anchor, persist its canonical
-receipt and transaction proof, and expose an Arc explorer link. That anchor proves the
-run receipt and decision ledger; it does not prove creator-payment settlement.
+After a run completes, the backend constructs canonical JSON containing the task and
+prompt hash, authorization signer and signed cap, ordered decision hashes, ordered
+payment items with explicit provenance, ledger completion timestamp, and receipt
+creation timestamp. It hashes those UTF-8 bytes with `keccak256`.
 
-Assay should not be described as an Arc mainnet working prototype until such a real,
-verifiable mainnet transaction is stored and displayed.
+The browser asks the authorization signer to switch to Arc mainnet (chain `5042`) and
+send a zero-value self-transaction whose calldata is the ASCII bytes `ASSAY_V1` followed
+by the exact 32-byte receipt hash. The backend only marks the receipt verified after its
+mainnet RPC confirms all of the following:
+
+- RPC and transaction chain are Arc mainnet (`5042`);
+- transaction is mined successfully;
+- `from` and `to` both equal the authorization signer;
+- value is zero;
+- calldata exactly matches the prepared receipt.
+
+Verified records are persisted in SQLite. A machine-readable artifact is downloadable
+from `GET /receipts/:id/artifact`; the backend also writes
+`artifacts/mainnet-receipt-anchor.json` beside the configured SQLite database (for the
+Render layout: `/var/data/artifacts/mainnet-receipt-anchor.json`). The artifact includes
+the canonical hash input, receipt/transaction hashes, block, signer, chain, timestamps,
+and explorer URL.
+
+### Reviewer path
+
+1. Open <https://assay-web.vercel.app/app> and connect the wallet that will sign the
+   authorization.
+2. Complete the authorization → agent run flow.
+3. Inspect the decision ledger and provenance-labelled payment stage. Demo/test events
+   are not creator-payment settlements.
+4. Click **Create Arc mainnet receipt proof** after synthesis completes.
+5. Approve the wallet network switch and sign the zero-value Arc mainnet self-transaction.
+6. Wait for backend verification, then open the displayed Arc explorer link.
+7. Download **Receipt artifact** and verify that its `receiptHash` is the keccak256 of
+   `hashInput.canonicalJson` and that its calldata matches `ASSAY_V1 + receiptHash`.
+
+Until a real transaction completes this path and its explorer URL/artifact are retained,
+do not claim that a mainnet proof exists. Even after verification, describe it as an Arc
+mainnet **run-receipt anchor**, never as Arc mainnet creator-payment settlement.

@@ -59,6 +59,16 @@ interface StoredMandate {
   createdAt: number;
 }
 
+export interface MandateSummary {
+  id: string;
+  signer: `0x${string}`;
+  capUnits: string;
+  spentUnits: string;
+  nonce: string;
+  expiry: number;
+  createdAt: number;
+}
+
 // In-memory mandate store. A mandate lives for one run (30-min expiry); an append-only
 // DB row would be a drop-in upgrade, but the SECURITY property (cap can't be exceeded)
 // is enforced here regardless of persistence.
@@ -199,4 +209,19 @@ export function refundSpend(mandateId: string, amountUsdc: number): void {
 /** Read-only view for the API / debugging. */
 export function getMandate(mandateId: string): StoredMandate | undefined {
   return mandates.get(mandateId);
+}
+
+/** Stable, JSON-safe mandate fields used by the run receipt builder. */
+export function getMandateSummary(mandateId: string): MandateSummary | undefined {
+  const mandate = mandates.get(mandateId);
+  if (!mandate) return undefined;
+  return {
+    id: mandate.id,
+    signer: mandate.user,
+    capUnits: mandate.capUnits.toString(),
+    spentUnits: mandate.spentUnits.toString(),
+    nonce: mandate.nonce,
+    expiry: mandate.expiry,
+    createdAt: mandate.createdAt,
+  };
 }

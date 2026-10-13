@@ -9,6 +9,7 @@ import { BudgetGauge } from "@/components/BudgetGauge";
 import { PhaseRail, type Phase } from "@/components/PhaseRail";
 import { Receipt } from "@/components/Receipt";
 import { Odometer } from "@/components/Odometer";
+import { MainnetReceiptProof } from "@/components/MainnetReceiptProof";
 import { fmtUsd, registerAuthorization } from "@/lib/api";
 import { authorizeSpending, type SpendingAuthorization } from "@/lib/wallet";
 
@@ -82,7 +83,10 @@ export default function AgentRunPage() {
   const cached = state.decisions.filter((d) => d.decision === "CACHE");
 
   const spent = useMemo(
-    () => state.payments.reduce((a, p) => a + (p.amount ?? 0), 0),
+    () =>
+      state.payments
+        .filter((payment) => payment.provenance === "arc_testnet_x402")
+        .reduce((total, payment) => total + (payment.amount ?? 0), 0),
     [state.payments],
   );
 
@@ -331,12 +335,22 @@ export default function AgentRunPage() {
                 animate={{ opacity: 1 }}
                 className="space-y-4"
               >
-                <h2 className="section-title">Proof of spend</h2>
+                <h2 className="section-title">Payment stage</h2>
                 <Receipt
                   synth={state.synth}
                   payments={state.payments}
                   taskId={state.taskId}
                 />
+
+                {authorizationId && state.taskId && (
+                  <>
+                    <h2 className="section-title">Run receipt</h2>
+                    <MainnetReceiptProof
+                      taskId={state.taskId}
+                      authorizationId={authorizationId}
+                    />
+                  </>
+                )}
 
                 <h2 className="section-title">Synthesized answer</h2>
                 <div className="glass p-4">

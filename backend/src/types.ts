@@ -75,3 +75,23 @@ export interface Task {
   budget: number;
   createdAt: string;
 }
+
+export type ReceiptAnchorStatus = "pending" | "verified";
+
+export interface RunReceiptRecord {
+  id: string;
+  taskId: string;
+  authorizationId: string;
+  receiptHash: string;
+  canonicalJson: string;
+  signer: string;
+  expectedCalldata: string;
+  chainId: number;
+  completionTimestamp: string;
+  createdAt: string;
+  anchorStatus: ReceiptAnchorStatus;
+  txHash: string | null;
+  blockNumber: string | null;
+  explorerUrl: string | null;
+  verifiedAt: string | null;
+}

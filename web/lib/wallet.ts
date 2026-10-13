@@ -21,6 +21,12 @@ declare global {
 }
 
 const ARC_CHAIN_ID_HEX = "0x" + ARC.CHAIN_ID.toString(16);
+const ARC_MAINNET = {
+  chainId: 5042,
+  rpcUrl: "https://rpc.mainnet.arc.io",
+  explorerUrl: "https://explorer.arc.io",
+} as const;
+const ARC_MAINNET_CHAIN_ID_HEX = `0x${ARC_MAINNET.chainId.toString(16)}`;
 
 function getProvider(): Eip1193Provider {
   if (typeof window === "undefined" || !window.ethereum) {
@@ -104,6 +110,67 @@ export async function proveWalletControl(): Promise<{
   await ensureArcNetwork();
   const proofTx = await sendProofTx(address);
   return { address, proofTx };
+}
+
+/** Switch to Arc mainnet, adding the public network definition when necessary. */
+export async function ensureArcMainnet(): Promise<void> {
+  const provider = getProvider();
+  try {
+    await provider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: ARC_MAINNET_CHAIN_ID_HEX }],
+    });
+  } catch (err: any) {
+    if (err?.code === 4902 || /Unrecognized chain/i.test(err?.message ?? "")) {
+      await provider.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: ARC_MAINNET_CHAIN_ID_HEX,
+            chainName: "Arc Mainnet",
+            nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+            rpcUrls: [ARC_MAINNET.rpcUrl],
+            blockExplorerUrls: [ARC_MAINNET.explorerUrl],
+          },
+        ],
+      });
+    } else {
+      throw err;
+    }
+  }
+}
+
+/** User-signed zero-value self-tx that anchors, but does not settle, a run receipt. */
+export async function sendMainnetReceiptAnchor(
+  expectedSigner: string,
+  calldata: string,
+): Promise<string> {
+  if (!/^0x[a-fA-F0-9]+$/.test(calldata)) throw new Error("Invalid receipt calldata.");
+  const provider = getProvider();
+  const address = await connectWallet();
+  if (address.toLowerCase() !== expectedSigner.toLowerCase()) {
+    throw new Error("Connected wallet does not match the run authorization signer.");
+  }
+  await ensureArcMainnet();
+  const accounts: string[] = await provider.request({ method: "eth_accounts" });
+  if (!accounts?.[0] || accounts[0].toLowerCase() !== expectedSigner.toLowerCase()) {
+    throw new Error("Arc mainnet wallet account changed; reconnect the authorization signer.");
+  }
+  const txHash: string = await provider.request({
+    method: "eth_sendTransaction",
+    params: [
+      {
+        from: expectedSigner,
+        to: expectedSigner,
+        value: "0x0",
+        data: calldata,
+      },
+    ],
+  });
+  if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
+    throw new Error("Wallet did not return a valid Arc mainnet transaction hash.");
+  }
+  return txHash;
 }
 
 /* ---------------------------------------------------------------------------
@@ -203,5 +270,4 @@ export async function authorizeSpending(capUsdc: number): Promise<SpendingAuthor
     signature,
   };
 }
-
 
