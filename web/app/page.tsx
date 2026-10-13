@@ -242,7 +242,7 @@ export default function LandingPage() {
           <Reveal>
             <span className="pill border border-brand/30 bg-brand/10 text-brand2">
               <BoltIcon className="h-3 w-3" />
-              x402 micropayments · Arc testnet · real USDC
+              x402 integration · Arc testnet · provenance-labelled demo
             </span>
           </Reveal>
           <Reveal delay={0.08}>
@@ -279,7 +279,7 @@ export default function LandingPage() {
               </span>
               <span className="flex items-center gap-1.5">
                 <ChainIcon className="h-3.5 w-3.5 text-zinc-500" />
-                On-chain settlement proofs
+                Explicit payment provenance
               </span>
               <span className="flex items-center gap-1.5">
                 <BanIcon className="h-3.5 w-3.5 text-zinc-500" />
@@ -339,13 +339,13 @@ export default function LandingPage() {
               icon: CoinIcon,
               step: "03",
               title: "Buy or refuse",
-              body: "Worth it? A ~$0.003 USDC payment settles over x402 on Arc. Not worth it? Logged with a rationale.",
+              body: "Worth it? The payment stage runs x402 when configured; hosted demo/test events remain explicitly labelled. Not worth it? Logged with a rationale.",
             },
             {
               icon: ShieldIcon,
               step: "04",
               title: "Prove",
-              body: "Answers cite only paid sources. Every payment has an on-chain proof; every refusal an explanation.",
+              body: "Every record states whether it is a demo event, payment intent, or Arc testnet x402 settlement; every refusal has an explanation.",
             },
           ].map(({ icon: Icon, step, title, body }, i) => (
             <Reveal key={step} delay={i * 0.08}>
@@ -404,12 +404,12 @@ export default function LandingPage() {
                 <CoinIcon className="h-5 w-5" />
               </span>
               <h3 className="mt-4 font-display text-lg font-semibold text-white">
-                Creators get paid per use
+                Per-use payment path
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-                Publish a source behind an x402 endpoint, set a price, connect a
-                wallet. When an agent decides your content is worth it, USDC
-                lands directly — no subscriptions, no middlemen, no invoices.
+                Publish a source behind an x402 endpoint, set a price, and connect a
+                wallet. With a funded Arc testnet paymaster, x402 can settle testnet
+                USDC; otherwise Assay records an honestly labelled demo/payment event.
               </p>
             </div>
           </Reveal>
@@ -422,9 +422,8 @@ export default function LandingPage() {
                 The ledger doesn&apos;t lie
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-                Every payment carries a settlement proof on Arc testnet. Totals,
-                per-creator payouts, buy/skip ratios — all live, all verifiable,
-                all one click away in the console.
+                The ledger separates demo/test events from Arc testnet x402 proofs.
+                Totals, provenance, and buy/skip ratios stay visible in the console.
               </p>
             </div>
           </Reveal>
@@ -439,7 +438,7 @@ export default function LandingPage() {
               <div>
                 <span className="section-title">Built on</span>
                 <h2 className="mt-2 font-display text-2xl font-bold text-white">
-                  Real rails, not mocks.
+                  Real integration, explicit provenance.
                 </h2>
               </div>
               <div className="flex flex-wrap gap-3">

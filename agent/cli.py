@@ -40,8 +40,10 @@ def _make_emit():
             console.print(f"[green]  PAY[/green] {data['title']} → {data['payTo'][:10]}… "
                           f"${data['price']:.4f}")
         elif event == "pay_done":
-            console.print(f"[bold green]  ✓ PAID[/bold green] {data['creator']} "
-                          f"${data['amount']:.4f}  proof={data['proof'][:18]}…")
+            label = ("TESTNET SETTLED" if data.get("provenance") == "arc_testnet_x402"
+                     else "DEMO/TEST EVENT")
+            console.print(f"[bold green]  ✓ {label}[/bold green] {data['creator']} "
+                          f"${data['amount']:.4f}  id={data['proof'][:18]}…")
         elif event == "pay_error":
             console.print(f"[bold red]  ✗ PAY FAILED[/bold red] {data['sourceId']}: {data['error']}")
         elif event == "synthesize":

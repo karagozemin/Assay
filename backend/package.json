@@ -5,10 +5,15 @@
   "description": "Assay backend: Source Registry + x402 seller middleware + append-only ledger + traction metrics.",
   "scripts": {
     "dev": "node --experimental-transform-types --experimental-sqlite --no-warnings --env-file=.env.local --watch src/server.ts",
-    "start": "node --experimental-transform-types --experimental-sqlite --no-warnings --env-file=.env.local src/server.ts",
-    "seed": "node --experimental-transform-types --experimental-sqlite --no-warnings --env-file=.env.local src/seed.ts",
+    "build": "tsc --noEmit",
+    "start": "node --experimental-transform-types --experimental-sqlite --no-warnings src/server.ts",
+    "seed": "node --experimental-transform-types --experimental-sqlite --no-warnings src/seed.ts",
+    "test": "node --experimental-transform-types --no-warnings --test src/*.test.ts",
     "typecheck": "tsc --noEmit",
     "postinstall": "patch-package"
+  },
+  "engines": {
+    "node": ">=22.10.0"
   },
   "dependencies": {
     "@circle-fin/x402-batching": "^2.0.4",

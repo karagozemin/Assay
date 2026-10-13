@@ -19,6 +19,15 @@ export function Receipt({
   taskId: string;
 }) {
   const now = new Date();
+  const testnetSettlements = payments.filter(
+    (payment) => payment.provenance === "arc_testnet_x402",
+  );
+  const demoEvents = payments.filter(
+    (payment) => payment.provenance === "demo_test_settlement",
+  );
+  const paymentIntents = payments.filter(
+    (payment) => payment.provenance === "payment_intent",
+  );
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, rotateX: -8 }}
@@ -34,7 +43,7 @@ export function Receipt({
               🧪 ASSAY
             </div>
             <div className="text-[9px] uppercase tracking-[0.15em] text-neutral-500">
-              proof-of-spend receipt
+              payment-stage receipt
             </div>
           </div>
 
@@ -50,23 +59,32 @@ export function Receipt({
           </div>
           <div className="flex justify-between text-neutral-500">
             <span>network</span>
-            <span className="text-neutral-800">Arc · x402</span>
+            <span className="text-neutral-800">Arc testnet / demo</span>
           </div>
 
           <div className="my-3 border-t border-dashed border-neutral-400" />
 
           <div className="space-y-1">
             {payments.length === 0 && (
-              <div className="text-center text-neutral-400">— no purchases —</div>
+              <div className="text-center text-neutral-400">— no payment-stage records —</div>
             )}
             {payments.map((p, i) => (
-              <div key={i} className="flex justify-between gap-2">
-                <span className="truncate text-neutral-700">
-                  {p.title || p.creator || p.sourceId?.slice(0, 8)}
-                </span>
-                <span className="shrink-0 text-neutral-900">
-                  {fmtUsd(p.amount ?? p.price ?? 0)}
-                </span>
+              <div key={i} className="space-y-0.5">
+                <div className="flex justify-between gap-2">
+                  <span className="truncate text-neutral-700">
+                    {p.title || p.creator || p.sourceId?.slice(0, 8)}
+                  </span>
+                  <span className="shrink-0 text-neutral-900">
+                    {fmtUsd(p.amount ?? p.price ?? 0)}
+                  </span>
+                </div>
+                <div className="text-[8px] uppercase tracking-wide text-neutral-400">
+                  {p.provenance === "arc_testnet_x402"
+                    ? "Arc testnet x402 settlement"
+                    : p.provenance === "payment_intent"
+                      ? "payment intent — not charged"
+                      : "demo/test — not a real settlement"}
+                </div>
               </div>
             ))}
           </div>
@@ -74,7 +92,7 @@ export function Receipt({
           <div className="my-3 border-t border-dashed border-neutral-400" />
 
           <div className="flex justify-between font-bold text-neutral-900">
-            <span>TOTAL</span>
+            <span>PAYMENT-STAGE TOTAL</span>
             <span>{fmtUsd(synth.cost)}</span>
           </div>
           <div className="mt-2 grid grid-cols-3 gap-1 text-center text-[9px] text-neutral-500">
@@ -95,13 +113,14 @@ export function Receipt({
           <div className="my-3 border-t border-dashed border-neutral-400" />
 
           <div className="text-center text-[9px] text-neutral-500">
-            paid {synth.creatorsPaid} creator(s) · buy/skip {synth.buySkipRatio.toFixed(2)}
+            {testnetSettlements.length} testnet settlement(s) · {demoEvents.length} demo/test
+            event(s) · {paymentIntents.length} intent(s)
           </div>
           <div className="mt-2 text-center text-[8px] tracking-[0.3em] text-neutral-400">
             ▐▌▐▐▌▐▌▐▐▌▐▌▐▌▐▐▌▐▌▐▐▌▐▌▐▌▐▐▌
           </div>
           <div className="text-center text-[9px] text-neutral-600">
-            thank you — every cent reached a creator
+            payment events and settlement proofs are labelled separately
           </div>
         </div>
         {/* torn bottom edge */}

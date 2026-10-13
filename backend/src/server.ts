@@ -23,11 +23,21 @@ import {
   type SignedAuthorization,
 } from "./mandate.ts";
 import * as store from "./db.ts";
+import { loadBackendConfig } from "./config.ts";
+import { classifyPaymentProvenance } from "./provenance.ts";
 
-
-
+const config = loadBackendConfig();
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || config.corsOrigins.includes(origin.replace(/\/$/, ""))) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
+  }),
+);
 app.use(express.json({ limit: "1mb" }));
 
 type PaidRequest = Request & { payment?: PaymentInfo };
@@ -37,7 +47,7 @@ const asDollars = (raw: string) => Number(formatUnits(BigInt(raw), 6));
 /* --------------------------------- health -------------------------------- */
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, network: ARC.NETWORK, db: store.DB_PATH });
+  res.json({ ok: true, service: "assay-backend", runtime: config.runtime });
 });
 
 /* -------------------------------- creators ------------------------------- */
@@ -185,6 +195,7 @@ app.get("/content/:sourceId", (req: Request, res: Response, next: NextFunction) 
         network: pay.network,
         settlementId: pay.transaction ?? null,
         explorer: pay.transaction ? `${ARC.EXPLORER}/tx/${pay.transaction}` : null,
+        provenance: "arc_testnet_x402",
       },
     });
   });
@@ -264,6 +275,7 @@ app.post("/pay/settle", async (req, res) => {
         network: ARC.NETWORK,
         settlementId: proof,
         explorer: null,
+        provenance: "demo_test_settlement",
       },
     });
   }
@@ -274,7 +286,7 @@ app.post("/pay/settle", async (req, res) => {
     refundSpend(String(authorizationId), source.price);
     return res
       .status(503)
-      .json({ error: "paymaster not configured — set BUYER_PRIVATE_KEY in backend/.env.local" });
+      .json({ error: "Arc testnet x402 paymaster is not configured" });
   }
 
 
@@ -296,6 +308,7 @@ app.post("/pay/settle", async (req, res) => {
         network: result.network,
         settlementId: result.proof,
         explorer: result.explorer,
+        provenance: "arc_testnet_x402",
       },
     });
   } catch (err: any) {
@@ -359,7 +372,7 @@ app.post("/ledger/decisions", (req, res) => {
   );
 });
 
-/** The agent posts a settled payment here (with the x402 settlement proof). */
+/** The agent posts a payment-stage record; provenance determines settlement status. */
 app.post("/ledger/payments", (req, res) => {
   const p = req.body ?? {};
   const required = ["taskId", "sourceId", "creatorId", "amount", "proof"];
@@ -375,6 +388,11 @@ app.post("/ledger/payments", (req, res) => {
       proof: String(p.proof),
       payer: String(p.payer ?? ""),
       network: String(p.network ?? ARC.NETWORK),
+      provenance: classifyPaymentProvenance(
+        String(p.proof),
+        p.provenance,
+        String(p.network ?? ARC.NETWORK),
+      ),
     }),
   );
 });
@@ -395,9 +413,8 @@ app.get("/metrics", (_req, res) => res.json(store.metrics()));
 
 /* --------------------------------- boot ---------------------------------- */
 
-const PORT = Number(process.env.PORT ?? 4000);
-app.listen(PORT, () => {
-  console.log(`Assay backend on http://localhost:${PORT}`);
+app.listen(config.port, config.host, () => {
+  console.log(`Assay backend on http://${config.host}:${config.port}`);
   console.log(`  registry:  POST /creators, POST /sources, GET /discover`);
   console.log(`  x402:      GET  /content/:sourceId`);
   console.log(`  ledger:    POST /ledger/decisions, POST /ledger/payments`);

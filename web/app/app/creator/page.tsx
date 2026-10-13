@@ -156,8 +156,8 @@ export default function CreatorPage() {
         <h1 className="text-2xl font-bold text-white">Creator</h1>
         <p className="text-sm text-gray-400">
           Register, connect a wallet, and publish a paid source. Each source is
-          served behind an x402-protected endpoint; when an agent buys it, USDC
-          lands directly in your wallet.
+          served behind an x402-protected endpoint. A funded Arc testnet paymaster
+          is required before a purchase can settle testnet USDC.
         </p>
       </header>
 
@@ -298,7 +298,7 @@ export default function CreatorPage() {
                   className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
                   aria-hidden
                 />
-                Settling on-chain…
+                Publishing source…
               </>
             ) : (
               <>Publish (price {fmtUsd(price)}/use)</>
@@ -310,10 +310,10 @@ export default function CreatorPage() {
       <PublishSuccess data={success} onClose={() => setSuccess(null)} />
 
 
-      {/* Live earnings */}
+      {/* Verified Arc testnet x402 earnings */}
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-400">
-          Live earnings
+          Verified Arc testnet x402 earnings
         </h2>
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
@@ -321,8 +321,8 @@ export default function CreatorPage() {
               <tr className="text-left text-xs uppercase text-gray-500">
                 <th className="pb-2">Creator</th>
                 <th className="pb-2">Wallet</th>
-                <th className="pb-2 text-right">Paid calls</th>
-                <th className="pb-2 text-right">Earned (USDC)</th>
+                <th className="pb-2 text-right">Testnet calls</th>
+                <th className="pb-2 text-right">Testnet USDC</th>
               </tr>
             </thead>
             <tbody>

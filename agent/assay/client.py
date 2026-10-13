@@ -9,8 +9,8 @@ Payment path:
   2. Pay via Circle Gateway nanopayment on Arc testnet (real testnet USDC).
   3. Retry with the X-PAYMENT header → 200 + content + settlement proof.
 
-`ASSAY_MOCK_PAY=1` swaps step 2 for a deterministic fake settlement id. This flag is a
-DEV-ONLY convenience (BUILD ORDER step 3 offline runs); the final demo path pays for real.
+`ASSAY_MOCK_PAY=1` swaps step 2 for a deterministic fake event id. This flag is a
+DEV-ONLY convenience and its output is always labelled `demo_test_settlement`.
 """
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ class AssayClient:
             proof = f"0xmock{uuid.uuid4().hex[:32]}"
             preview = self._peek_content(source_id)
             return {"content": preview, "proof": proof, "payer": AGENT_WALLET,
-                    "network": ARC_NETWORK}
+                    "network": ARC_NETWORK, "provenance": "demo_test_settlement"}
 
         payload: Dict[str, Any] = {"sourceId": source_id}
         if authorization_id:
@@ -100,6 +100,7 @@ class AssayClient:
             "proof": proof,
             "payer": pay.get("payer", AGENT_WALLET),
             "network": pay.get("network", ARC_NETWORK),
+            "provenance": pay.get("provenance", "payment_intent"),
         }
 
     def _peek_content(self, source_id: str) -> str:

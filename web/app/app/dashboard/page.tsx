@@ -35,6 +35,7 @@ export default function DashboardPage() {
   }, []);
 
   const skips = decisions.filter((d) => d.decision === "SKIP");
+  const testnetPayments = payments.filter((p) => p.provenance === "arc_testnet_x402");
 
   return (
     <div className="space-y-6">
@@ -43,14 +44,14 @@ export default function DashboardPage() {
         <div className="relative">
           <span className="pill mb-3 border border-edge bg-white/5 text-gray-300">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-buy" />
-            polling live · Arc testnet
+            polling live · provenance-aware ledger
           </span>
           <h1 className="font-display text-3xl font-bold tracking-tight text-white">
             The ledger doesn't lie.
           </h1>
           <p className="mt-2 max-w-xl text-sm text-gray-400">
-            Every paid call is real testnet USDC settled on Arc; every refusal is
-            logged with a rationale. This is the proof behind the demo.
+            Demo/test payment events and Arc testnet x402 settlements are shown
+            separately. Every refusal is logged with a rationale.
           </p>
         </div>
       </header>
@@ -65,6 +66,13 @@ export default function DashboardPage() {
                 <span className="text-gray-600">→</span> creator{" "}
                 {p.creatorId.slice(0, 6)}{" "}
                 <span className="font-mono text-gray-600">{p.proof.slice(0, 10)}…</span>
+                <span className="text-gray-600">
+                  {p.provenance === "arc_testnet_x402"
+                    ? "testnet x402"
+                    : p.provenance === "payment_intent"
+                      ? "intent · not charged"
+                      : "demo/test"}
+                </span>
               </span>
             ))}
           </div>
@@ -73,10 +81,12 @@ export default function DashboardPage() {
 
       {/* Big traction numbers */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Big label="Total USDC settled" value={fmtUsd(metrics?.totalUsdc ?? 0)} />
-        <Big label="Paid calls" num={metrics?.paidCalls ?? 0} />
-        <Big label="Avg payment" value={fmtUsd(metrics?.avgPayment ?? 0)} />
-        <Big label="Creators paid" num={metrics?.uniqueCreatorsPaid ?? 0} />
+        <Big label="Testnet USDC settled" value={fmtUsd(metrics?.totalUsdc ?? 0)} />
+        <Big label="Testnet x402 calls" num={metrics?.paidCalls ?? 0} />
+        <Big label="Avg testnet settlement" value={fmtUsd(metrics?.avgPayment ?? 0)} />
+        <Big label="Testnet creators paid" num={metrics?.uniqueCreatorsPaid ?? 0} />
+        <Big label="Demo/test events" num={metrics?.demoPaymentEvents ?? 0} />
+        <Big label="Payment intents" num={metrics?.paymentIntentEvents ?? 0} />
         <Big label="Unique tasks" num={metrics?.uniqueTasks ?? 0} />
         <Big label="Repeat tasks" num={metrics?.repeatTasks ?? 0} />
         <Big
@@ -90,10 +100,10 @@ export default function DashboardPage() {
       </div>
 
 
-      {/* Payout ledger */}
+      {/* Verified testnet payout ledger */}
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-400">
-          Per-creator payouts
+          Verified Arc testnet x402 payouts
         </h2>
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
@@ -102,7 +112,7 @@ export default function DashboardPage() {
                 <th className="pb-2">Creator</th>
                 <th className="pb-2">Wallet</th>
                 <th className="pb-2 text-right">Calls</th>
-                <th className="pb-2 text-right">Earned</th>
+                <th className="pb-2 text-right">Testnet USDC</th>
               </tr>
             </thead>
             <tbody>
@@ -131,10 +141,10 @@ export default function DashboardPage() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Payment proofs */}
+        {/* Payment-stage records */}
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-400">
-            Payment proofs ({payments.length})
+            Payment-stage records ({payments.length}; {testnetPayments.length} testnet proofs)
           </h2>
           <div className="card max-h-96 space-y-2 overflow-auto text-xs">
             {payments.length === 0 && <span className="text-gray-500">No payments yet.</span>}
@@ -146,7 +156,11 @@ export default function DashboardPage() {
                   <div className="min-w-0">
                     <div className="truncate font-mono text-emerald-300">{p.proof}</div>
                     <div className="text-gray-500">
-                      {p.network} · payer {p.payer.slice(0, 8)}…
+                      {p.network} · {p.provenance === "arc_testnet_x402"
+                        ? `testnet x402 · payer ${p.payer.slice(0, 8)}…`
+                        : p.provenance === "payment_intent"
+                          ? "payment intent — not charged or settled"
+                          : "demo/test — not real settlement"}
                     </div>
                   </div>
                   <span className="tabular-nums text-white">{fmtUsd(p.amount)}</span>
@@ -201,4 +215,3 @@ function Big({
     </div>
   );
 }
-

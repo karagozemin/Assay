@@ -111,7 +111,7 @@ export default function AgentRunPage() {
         <div className="relative max-w-2xl">
           <span className="pill mb-4 border border-edge bg-white/5 text-gray-300">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-buy" />
-            live on Arc testnet · x402 nanopayments
+            Arc testnet x402 integration · demo events labelled
           </span>
           <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl">
             The spending brain
@@ -123,7 +123,7 @@ export default function AgentRunPage() {
             <span className="text-buy">buy the sources worth paying for</span> —
             and, just as importantly,{" "}
             <span className="text-skip">refuse the rest, with receipts</span>.
-            Every cent settles to a real creator wallet.
+            Test/demo payment events are never presented as real settlement.
           </p>
         </div>
       </header>

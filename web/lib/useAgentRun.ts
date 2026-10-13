@@ -33,6 +33,11 @@ export type PayEvent = {
   payTo?: string;
   title?: string;
   error?: string;
+  network?: string;
+  provenance?:
+    | "demo_test_settlement"
+    | "arc_testnet_x402"
+    | "payment_intent";
 };
 
 export type SynthEvent = {
@@ -163,7 +168,19 @@ export function useAgentRun() {
             break;
           case "pay_done":
             setState((s) => ({ ...s, payments: [...s.payments, data] }));
-            push("pay", `Settled $${data.amount} to ${data.creator} — proof ${String(data.proof).slice(0, 14)}…`);
+            push(
+              "pay",
+              data.provenance === "arc_testnet_x402"
+                ? `Arc testnet x402 settlement $${data.amount} — proof ${String(data.proof).slice(0, 14)}…`
+                : `Demo/test payment event $${data.amount} — id ${String(data.proof).slice(0, 14)}…`,
+            );
+            break;
+          case "pay_intent":
+            setState((s) => ({ ...s, payments: [...s.payments, data] }));
+            push(
+              "pay",
+              `Payment intent recorded for $${data.amount} — not charged or settled`,
+            );
             break;
           case "pay_error":
             push("error", `Payment failed for ${data.sourceId}: ${data.error}`);

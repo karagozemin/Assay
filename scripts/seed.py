@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """
-Seed the Assay registry with real creators + short factual sources, then (optionally)
-run a batch of research tasks through the spending brain so the dashboard shows genuine,
-non-synthetic volume.
+Legacy local demo-task runner. Registry fixtures now come from `cd backend && npm run
+seed`; all mock payment output is demo/test data, not settlement or creator revenue.
 
 Usage:
-    python scripts/seed.py                 # seed creators + sources only
-    python scripts/seed.py --run           # seed, then run the demo task batch
-    ASSAY_MOCK_PAY=1 python scripts/seed.py --run   # offline dev (fake settlement ids)
+    ASSAY_MOCK_PAY=1 python scripts/seed.py --tasks-only
 
 Sources are intentionally overlapping in topic clusters (Arc/USDC, embeddings/RAG,
 LangGraph agents) so the ASSAY engine has to REFUSE redundant buys — that is the feature
@@ -23,7 +20,7 @@ import httpx
 
 BACKEND = os.environ.get("ASSAY_BACKEND_URL", "http://localhost:4000")
 
-# --- Creators (each gets a distinct testnet wallet) ---------------------------------
+# --- Legacy demo fixtures (not real people, wallets, or registrations) ---------------
 CREATORS = [
     ("Ada Lovelace",     "0x1111111111111111111111111111111111111111"),
     ("Grace Hopper",     "0x2222222222222222222222222222222222222222"),
@@ -139,7 +136,7 @@ def run_tasks() -> None:
     for i, (prompt, budget) in enumerate(TASKS, 1):
         print(f"\n=== task {i}/{len(TASKS)}  (budget ${budget:.4f}) ===\n{prompt}")
         state = run_task(prompt, budget, backend_url=BACKEND)
-        print(f"  spent ${state.spent:.4f} · {len(state.payments)} paid")
+        print(f"  payment-stage ${state.spent:.4f} · {len(state.payments)} event(s)")
     print("\n✓ task batch complete — check the dashboard for live metrics")
 
 

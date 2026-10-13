@@ -11,7 +11,7 @@ const ORDER: { key: Phase; label: string; icon: string }[] = [
   { key: "intake", label: "Intake", icon: "◎" },
   { key: "discover", label: "Discover", icon: "⌕" },
   { key: "assay", label: "Assay", icon: "🧪" },
-  { key: "settle", label: "Settle", icon: "⛓" },
+  { key: "settle", label: "Payment stage", icon: "⛓" },
   { key: "synthesize", label: "Synthesize", icon: "✎" },
 ];
 

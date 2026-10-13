@@ -5,8 +5,12 @@
 # Assay — Architecture
 
 > **The spending brain for research agents.** Assay decides *which* creator sources are worth
-> buying under a fixed USDC budget, then pays them per use over **x402 + Circle Gateway
-> nanopayments** on **Arc testnet** — logging every decision, *especially the refusals*.
+> buying under a fixed budget, then enters an **x402 + Circle Gateway** payment stage on
+> **Arc testnet** — logging every decision, *especially the refusals*.
+
+Payment provenance is explicit: demo/test events are not settlement. The x402 path settles
+testnet USDC only when a funded testnet paymaster is configured. An Arc mainnet run-receipt
+anchor is not implemented yet; see the current proof boundary in [README.md](README.md).
 
 This document is the map of the system: what each part does, how data flows, and where the
 money actually moves. Prose is kept short; each section leads with a one-liner and then a
@@ -177,9 +181,9 @@ falls back to an identical sequential runner, so the demo never breaks.
 
 ## 5. The money path — x402 + Circle Gateway on Arc
 
-One-liner: buying a source is a real HTTP 402 handshake — the seller gate demands payment,
-the buyer paymaster settles a sub-cent USDC nanopayment on Arc, and only then is content
-released. Every settlement carries an on-chain proof.
+One-liner: with a funded Arc testnet paymaster, buying a source performs an HTTP 402
+handshake and returns a testnet settlement identifier. Development demo modes bypass that
+rail and are stored as `demo_test_settlement`, never as real settlement.
 
 ```mermaid
 sequenceDiagram
@@ -260,11 +264,11 @@ append-only ledger, and aggregate views for the dashboard.
 | `GET  /discover?q=` | candidate cards — metadata + price + embedding, **never content** |
 | `GET  /content/:id` | **x402-gated**: 402 unless paid to that creator's wallet |
 | `POST /authorizations` | register a browser-signed spending cap → mandate id |
-| `POST /pay/settle` | enforce cap → settle real nanopayment → return content + proof |
+| `POST /pay/settle` | enforce cap → configured testnet x402 or explicit failure |
 | `POST /ledger/decisions` | append a BUY/SKIP/CACHE decision + rationale |
-| `POST /ledger/payments` | append a settled payment + proof |
-| `GET  /payouts` | per-creator aggregate earnings |
-| `GET  /metrics` | traction metrics (paid calls, USDC settled, ratios…) |
+| `POST /ledger/payments` | append a provenance-labelled payment-stage record |
+| `GET  /payouts` | verified Arc testnet x402 aggregates only |
+| `GET  /metrics` | decisions plus separated demo/test and testnet x402 metrics |
 
 ---
 

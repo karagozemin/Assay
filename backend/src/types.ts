@@ -48,17 +48,24 @@ export interface Decision {
   createdAt: string;
 }
 
+export type PaymentProvenance =
+  | "demo_test_settlement"
+  | "arc_testnet_x402"
+  | "payment_intent"
+  | "arc_mainnet_receipt_anchor";
+
 export interface Payment {
   id: string;
   taskId: string;
   sourceId: string;
   creatorId: string;
-  /** Amount in USDC dollars actually settled. */
+  /** Amount requested by this payment-stage event. */
   amount: number;
-  /** x402/Gateway settlement proof: tx hash or settlement id. */
+  /** Payment-stage identifier; provenance determines whether it is a settlement proof. */
   proof: string;
   payer: string;
   network: string;
+  provenance: PaymentProvenance;
   createdAt: string;
 }
 

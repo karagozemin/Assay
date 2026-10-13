@@ -14,6 +14,7 @@ the agent always works for the demo.
 from __future__ import annotations
 
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
@@ -142,7 +143,25 @@ def node_pay(state: RunState, client: AssayClient, emit: EmitFn) -> RunState:
             result = client.buy_content(d.source_id, d.price, pay_to,
                                         authorization_id=state.authorization_id)
         except Exception as e:  # noqa: BLE001 — surface, don't crash the run
-
+            response = getattr(e, "response", None)
+            if getattr(response, "status_code", None) == 503:
+                try:
+                    intent = client.record_payment({
+                        "taskId": state.task_id, "sourceId": d.source_id,
+                        "creatorId": d.creator_id, "amount": d.price,
+                        "proof": f"payment-intent-{uuid.uuid4()}", "payer": "",
+                        "network": "eip155:5042002", "provenance": "payment_intent",
+                    })
+                    state.payments.append(intent)
+                    emit("pay_intent", {
+                        "sourceId": d.source_id, "amount": d.price,
+                        "proof": intent["proof"], "provenance": "payment_intent",
+                        "network": intent.get("network", "eip155:5042002"),
+                        "creator": card.get("creator", {}).get("name", ""),
+                    })
+                    continue
+                except Exception:  # noqa: BLE001 — fall through to visible pay_error
+                    pass
             emit("pay_error", {"sourceId": d.source_id, "error": str(e)})
             continue
         state.bought_content[d.source_id] = result.get("content", "")
@@ -150,11 +169,16 @@ def node_pay(state: RunState, client: AssayClient, emit: EmitFn) -> RunState:
             "taskId": state.task_id, "sourceId": d.source_id,
             "creatorId": d.creator_id, "amount": d.price,
             "proof": result["proof"], "payer": result.get("payer", ""),
+            "network": result.get("network", ""),
+            "provenance": result.get("provenance", "payment_intent"),
         })
         state.payments.append(payment)
         state.spent += d.price
         emit("pay_done", {"sourceId": d.source_id, "amount": d.price,
-                          "proof": result["proof"], "creator": card.get("creator", {}).get("name", "")})
+                          "proof": result["proof"],
+                          "provenance": payment.get("provenance", "payment_intent"),
+                          "network": payment.get("network", ""),
+                          "creator": card.get("creator", {}).get("name", "")})
     return state
 
 
@@ -162,12 +186,19 @@ def node_synthesize(state: RunState, client: AssayClient, emit: EmitFn) -> RunSt
     bought = [d for d in state.decisions if d.decision == "BUY"]
     skipped = [d for d in state.decisions if d.decision == "SKIP"]
     cached = [d for d in state.decisions if d.decision == "CACHE"]
-    creators_paid = sorted({state.cards.get(d.source_id, {}).get("creator", {}).get("name", "?")
-                            for d in bought})
+    testnet_settlements = [p for p in state.payments
+                           if p.get("provenance") == "arc_testnet_x402"]
+    demo_events = [p for p in state.payments
+                   if p.get("provenance") == "demo_test_settlement"]
+    payment_intents = [p for p in state.payments
+                       if p.get("provenance") == "payment_intent"]
+    creators_paid = sorted({state.cards.get(p.get("sourceId", ""), {})
+                            .get("creator", {}).get("name", "?")
+                            for p in testnet_settlements})
 
     lines: List[str] = [f"# Answer to: {state.prompt}", ""]
     if bought:
-        lines.append("Synthesized from paid sources:")
+        lines.append("Synthesized from sources that completed the payment stage:")
         for d in bought:
             card = state.cards.get(d.source_id, {})
             snippet = (state.bought_content.get(d.source_id, "") or "").strip().replace("\n", " ")
@@ -179,8 +210,10 @@ def node_synthesize(state: RunState, client: AssayClient, emit: EmitFn) -> RunSt
         lines.append("No sources cleared the value-of-information bar for this budget. "
                      "The agent refused to spend rather than buy low-value data.")
 
-    cost_line = (f"\nThis answer cost ${state.spent:.4f}, paid to {len(creators_paid)} "
-                 f"creator(s): {', '.join(creators_paid) if creators_paid else 'none'}. "
+    cost_line = (f"\nPayment-stage amount ${state.spent:.4f}: "
+                 f"{len(testnet_settlements)} Arc testnet x402 settlement(s), "
+                 f"{len(demo_events)} demo/test event(s), "
+                 f"{len(payment_intents)} uncharged payment intent(s). "
                  f"{len(skipped)} source(s) skipped, {len(cached)} served from cache.")
     lines.append(cost_line)
     state.answer = "\n".join(lines)

@@ -1,8 +1,14 @@
+const { validateProductionEnv } = require("./config/validate-env.cjs");
+
+if (process.env.NODE_ENV === "production") {
+  validateProductionEnv(process.env);
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Backend (registry/ledger) and agent (SSE) base URLs are read at runtime from
-  // NEXT_PUBLIC_* env vars so the same build deploys against local or hosted services.
+  // NEXT_PUBLIC_* values are embedded at build time. Production builds fail above
+  // if either service URL is missing, local, or an ephemeral trycloudflare origin.
 };
 
 module.exports = nextConfig;

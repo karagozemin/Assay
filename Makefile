@@ -31,7 +31,8 @@ web: ## Run the Next.js demo surface on :3000
 	cd web && npm run dev
 
 seed: ## Seed creators + sources + run the demo task batch (mock pay flag on)
-	ASSAY_MOCK_PAY=1 $(PY) scripts/seed.py --run
+	cd backend && npm run seed
+	ASSAY_MOCK_PAY=1 $(PY) scripts/seed.py --tasks-only
 
 run: ## Run a single research task from the CLI (usage: make run Q="..." B=0.01)
 	$(PY) agent/cli.py "$(Q)" --budget $(or $(B),0.01)

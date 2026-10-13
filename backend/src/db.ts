@@ -9,6 +9,7 @@ import type {
   Decision,
   DecisionKind,
   Payment,
+  PaymentProvenance,
   Task,
 } from "./types.ts";
 
@@ -73,6 +74,7 @@ db.exec(`
     proof TEXT NOT NULL,
     payer TEXT NOT NULL,
     network TEXT NOT NULL,
+    provenance TEXT NOT NULL DEFAULT 'payment_intent',
     createdAt TEXT NOT NULL
   );
 
@@ -89,6 +91,19 @@ const creatorCols = (
 if (!creatorCols.includes("proofTx")) {
   db.exec("ALTER TABLE creators ADD COLUMN proofTx TEXT NOT NULL DEFAULT '';");
 }
+
+// Preserve old demo records, but stop treating their fake ids as settlement proofs.
+const paymentCols = (
+  db.prepare("PRAGMA table_info(payments)").all() as unknown as { name: string }[]
+).map((c) => c.name);
+if (!paymentCols.includes("provenance")) {
+  db.exec("ALTER TABLE payments ADD COLUMN provenance TEXT NOT NULL DEFAULT 'payment_intent';");
+}
+db.exec(`
+  UPDATE payments
+  SET provenance = 'demo_test_settlement'
+  WHERE proof LIKE 'test-settle-%' OR proof LIKE '0xmock%';
+`);
 
 
 const now = () => new Date().toISOString();
@@ -297,12 +312,13 @@ export function recordPayment(input: {
   proof: string;
   payer: string;
   network: string;
+  provenance: PaymentProvenance;
 }): Payment {
   const p: Payment = { id: randomUUID(), createdAt: now(), ...input };
   db.prepare(
     `INSERT INTO payments
-       (id, taskId, sourceId, creatorId, amount, proof, payer, network, createdAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, taskId, sourceId, creatorId, amount, proof, payer, network, provenance, createdAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     p.id,
     p.taskId,
@@ -312,6 +328,7 @@ export function recordPayment(input: {
     p.proof,
     p.payer,
     p.network,
+    p.provenance,
     p.createdAt,
   );
   return p;
@@ -344,7 +361,7 @@ export function creatorPayouts(): CreatorPayout[] {
               COALESCE(SUM(p.amount), 0) AS totalEarned,
               COUNT(p.id) AS paidCalls
        FROM creators c
-       LEFT JOIN payments p ON p.creatorId = c.id
+       LEFT JOIN payments p ON p.creatorId = c.id AND p.provenance = 'arc_testnet_x402'
        GROUP BY c.id
        ORDER BY totalEarned DESC`,
     )
@@ -362,6 +379,9 @@ export interface Metrics {
   skipCount: number;
   cacheCount: number;
   buySkipRatio: number;
+  totalPaymentEvents: number;
+  demoPaymentEvents: number;
+  paymentIntentEvents: number;
 }
 
 export function metrics(): Metrics {
@@ -369,13 +389,23 @@ export function metrics(): Metrics {
     .prepare(
       `SELECT COUNT(*) AS calls, COALESCE(SUM(amount),0) AS total,
               COUNT(DISTINCT creatorId) AS creators
-       FROM payments`,
+       FROM payments
+       WHERE provenance = 'arc_testnet_x402'`,
     )
     .get() as unknown as { calls: number; total: number; creators: number };
 
   const tasksRun = (
     db.prepare("SELECT COUNT(*) AS n FROM tasks").get() as unknown as { n: number }
   ).n;
+
+  const paymentEvents = db
+    .prepare(
+      `SELECT COUNT(*) AS total,
+              SUM(CASE WHEN provenance='demo_test_settlement' THEN 1 ELSE 0 END) AS demo,
+              SUM(CASE WHEN provenance='payment_intent' THEN 1 ELSE 0 END) AS intents
+       FROM payments`,
+    )
+    .get() as unknown as { total: number; demo: number | null; intents: number | null };
 
   // repeat tasks = prompts that appear more than once
   const repeat = (
@@ -413,6 +443,9 @@ export function metrics(): Metrics {
     skipCount,
     cacheCount,
     buySkipRatio: skipCount ? buyCount / skipCount : buyCount,
+    totalPaymentEvents: paymentEvents.total,
+    demoPaymentEvents: paymentEvents.demo ?? 0,
+    paymentIntentEvents: paymentEvents.intents ?? 0,
   };
 }
 

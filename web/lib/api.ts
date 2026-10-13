@@ -54,6 +54,11 @@ export type Payment = {
   proof: string;
   payer: string;
   network: string;
+  provenance:
+    | "demo_test_settlement"
+    | "arc_testnet_x402"
+    | "payment_intent"
+    | "arc_mainnet_receipt_anchor";
   createdAt?: string;
 };
 
@@ -76,6 +81,9 @@ export type Metrics = {
   skipCount: number;
   cacheCount: number;
   buySkipRatio: number;
+  totalPaymentEvents: number;
+  demoPaymentEvents: number;
+  paymentIntentEvents: number;
 };
 
 /* ------------------------------ helpers ---------------------------------- */
@@ -116,6 +124,9 @@ type RawMetrics = {
   skipCount?: number;
   cacheCount?: number;
   buySkipRatio?: number;
+  totalPaymentEvents?: number;
+  demoPaymentEvents?: number;
+  paymentIntentEvents?: number;
 };
 
 export const getMetrics = () =>
@@ -133,6 +144,9 @@ export const getMetrics = () =>
         skipCount: m.skipCount ?? 0,
         cacheCount: m.cacheCount ?? 0,
         buySkipRatio: m.buySkipRatio ?? 0,
+        totalPaymentEvents: m.totalPaymentEvents ?? 0,
+        demoPaymentEvents: m.demoPaymentEvents ?? 0,
+        paymentIntentEvents: m.paymentIntentEvents ?? 0,
       }),
     );
 

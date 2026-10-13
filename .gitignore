@@ -33,3 +33,6 @@ npm-debug.log*
 
 # os
 .DS_Store
+
+# local working prompt / notes
+.last_prompt.md

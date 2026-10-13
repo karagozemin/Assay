@@ -18,9 +18,10 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://assay-web.vercel.app"),
   title: "Assay — the spending brain for research agents",
   description:
-    "Watch an AI agent decide which creator sources are worth buying — and why it refuses the rest — paying per use over x402 on Arc.",
+    "Watch an AI agent decide which creator sources are worth buying, label payment provenance, and explain every refusal.",
   icons: {
     icon: "/assay.png",
     apple: "/assay.png",
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Assay — the spending brain for research agents",
     description:
-      "An AI agent that decides which creator sources are worth buying — and refuses the rest — paying per use over x402 on Arc.",
+      "An AI agent that decides which creator sources are worth buying, labels payment provenance, and explains every refusal.",
     images: ["/assay.png"],
   },
 };

@@ -1,6 +1,6 @@
 """Smoke test: run one research task end-to-end against the live backend and print
-the ASSAY decision stream. Used to verify candidates flow, decisions are made, and a
-payment settles. Run with ASSAY_MOCK_PAY=1 for an offline settlement id."""
+the ASSAY decision stream. Used to verify candidates flow, decisions are made, and the
+payment stage completes. ASSAY_MOCK_PAY=1 creates labelled demo/test events only."""
 import sys
 from collections import Counter
 
@@ -14,7 +14,8 @@ def emit(ev, data):
               f"rel={data['relevance']:.3f} nov={data['novelty']:.3f} "
               f":: {data['title'][:42]}")
     elif ev == "pay_done":
-        print(f"  PAID ${data['amount']:.4f} -> {data['creator']}  proof={data['proof'][:22]}")
+        label = "TESTNET SETTLED" if data.get("provenance") == "arc_testnet_x402" else "DEMO/TEST"
+        print(f"  {label} ${data['amount']:.4f} -> {data['creator']}  id={data['proof'][:22]}")
     elif ev == "synthesize":
         print(f"  SUMMARY cost=${data['cost']} bought={data['bought']} "
               f"skipped={data['skipped']} cached={data['cached']}")

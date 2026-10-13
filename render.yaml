@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: assay-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    disk:
+      name: assay-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: NODE_ENV
+        value: production
+      - key: ASSAY_RUNTIME
+        value: production
+      - key: ASSAY_DB
+        value: /var/data/assay.sqlite
+      - key: ASSAY_TEST_SETTLE
+        value: "0"
+      - key: ASSAY_MOCK_PAY
+        value: "0"
+      - key: CORS_ORIGIN
+        value: https://assay-web.vercel.app
+      - key: ARC_MAINNET_CHAIN_ID
+        value: "5042"
+      - key: ARC_MAINNET_RPC_URL
+        value: https://rpc.mainnet.arc.io
+      - key: ARC_MAINNET_EXPLORER_URL
+        value: https://explorer.arc.io
+
+  - type: web
+    name: assay-agent
+    runtime: python
+    rootDir: agent
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ASSAY_RUNTIME
+        value: production
+      - key: ASSAY_BACKEND_URL
+        value: https://assay-backend.onrender.com
+      - key: CORS_ORIGIN
+        value: https://assay-web.vercel.app
+      - key: ASSAY_TEST_SETTLE
+        value: "0"
+      - key: ASSAY_MOCK_PAY
+        value: "0"
