@@ -125,7 +125,7 @@ The root [`render.yaml`](render.yaml) defines two stable-origin services:
 
 | Service | Root | Build | Start |
 | --- | --- | --- | --- |
-| `assay-backend` | `backend` | `npm ci && npm run build` | `npm start` |
+| `assay-backend` | `backend` | `npm ci --include=dev && npm run build` | `npm start` |
 | `assay-agent` | `agent` | `pip install -r requirements.txt` | `uvicorn api:app --host 0.0.0.0 --port $PORT` |
 
 Both expose `GET /health`. The backend binds to `0.0.0.0:$PORT`. The Blueprint also
@@ -133,6 +133,11 @@ attaches a persistent disk at `/var/data` and uses
 `ASSAY_DB=/var/data/assay.sqlite`; without a persistent disk, SQLite state disappears
 on redeploy. Render persistent disks require a paid service instance; the current
 SQLite build is therefore not durable on Render Free.
+
+The backend build explicitly includes `devDependencies` even though `NODE_ENV` is
+`production`: `patch-package` must apply the checked-in Circle compatibility patch and
+TypeScript must run the build-time typecheck. These are build tools, not secrets or
+production feature flags.
 
 After the first backend deploy, open its Render Shell and run `npm run seed` once. The
 idempotent command loads clearly marked demo fixtures: 5 demo creators, 11 sources, 11

@@ -3,7 +3,9 @@ services:
     name: assay-backend
     runtime: node
     rootDir: backend
-    buildCommand: npm ci && npm run build
+    # NODE_ENV=production makes npm omit devDependencies by default. The build needs
+    # TypeScript and patch-package, so opt them in explicitly for the build image.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
     disk:
