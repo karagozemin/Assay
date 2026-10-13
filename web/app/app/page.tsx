@@ -64,6 +64,7 @@ export default function AgentRunPage() {
       setAuth(grant);
       setAuthorizationId(registered.id);
     } catch (e: any) {
+      console.error("[Assay] Spending authorization failed", e);
 
       if (e?.code === 4001) {
         setAuthError("Signature rejected — spending not authorized.");

@@ -205,19 +205,34 @@ export type RegisteredAuthorization = {
   expiry: number;
 };
 
-export const registerAuthorization = (auth: {
+export const registerAuthorization = async (auth: {
   user: string;
   token: string;
   cap: string; // USDC base units, decimal string
   nonce: string;
   expiry: number;
   signature: string;
-}) =>
-  fetch(`${BACKEND}/authorizations`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(auth),
-  }).then(json<RegisteredAuthorization>);
+}): Promise<RegisteredAuthorization> => {
+  const url = `${BACKEND}/authorizations`;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(auth),
+    });
+    return await json<RegisteredAuthorization>(response);
+  } catch (error) {
+    // A rejected fetch has no HTTP response, so make the infrastructure failure
+    // explicit instead of showing the browser's context-free "Failed to fetch".
+    console.error(`[Assay API] POST ${url} failed`, error);
+    if (error instanceof TypeError) {
+      throw new Error(
+        "Assay backend is currently unreachable. Please retry in a moment.",
+      );
+    }
+    throw error;
+  }
+};
 
 export const fmtUsd = (n: number | null | undefined) => {
 
