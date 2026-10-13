@@ -179,7 +179,7 @@ small Arc mainnet gas balance in that wallet.
 
 ```dotenv
 ASSAY_RUNTIME=production
-ASSAY_BACKEND_URL=https://assay-backend.onrender.com
+ASSAY_BACKEND_URL=https://assay-backend-07w0.onrender.com
 CORS_ORIGIN=https://assay-web.vercel.app
 ASSAY_TEST_SETTLE=0
 ASSAY_MOCK_PAY=0
@@ -193,7 +193,7 @@ URLs. Public `/run` callers cannot override the backend URL.
 Set these values for the Production environment, then redeploy:
 
 ```dotenv
-NEXT_PUBLIC_BACKEND_URL=https://assay-backend.onrender.com
+NEXT_PUBLIC_BACKEND_URL=https://assay-backend-07w0.onrender.com
 NEXT_PUBLIC_AGENT_URL=https://assay-agent.onrender.com
 ```
 
@@ -203,7 +203,7 @@ loopback, or `*.trycloudflare.com`. These are public service origins, not secret
 ### Verify after deployment
 
 ```bash
-curl --fail https://assay-backend.onrender.com/health
+curl --fail https://assay-backend-07w0.onrender.com/health
 curl --fail https://assay-agent.onrender.com/health
 ```
 

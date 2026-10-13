@@ -45,7 +45,7 @@ services:
       - key: ASSAY_RUNTIME
         value: production
       - key: ASSAY_BACKEND_URL
-        value: https://assay-backend.onrender.com
+        value: https://assay-backend-07w0.onrender.com
       - key: CORS_ORIGIN
         value: https://assay-web.vercel.app
       - key: ASSAY_TEST_SETTLE
